@@ -82,7 +82,7 @@ gen.model <- function(df, err, link, enhancer.formula = ~E1+E2+E3+E4+E5+E6, ...)
   
   start.time <- proc.time() # start timer
   
-  expr <- df[,2] # pull out vector of expression data
+  expr <- df[['expression']] # pull out vector of expression data
   design <- df %>% select(-condition, -expression) # pull out design matrix
   actFun <- formula(enhancer.formula) # create activity function
   enhance.obj <- enhancerDataObject(expr, design, actFun, errorModel = err, linkFunction = link) %>%
@@ -99,17 +99,20 @@ test.params <- function(df, errs, links, ...){
   # links = link functions to use c('additive', 'exponential', 'logisitic')
   
   bic <- NULL # initiate object to track BICs
+  mods <- list() # initiate empty list for dumping models into
   plts <- list() # initiate empty list for dumping plots into
+  resids <- list() # initiate empty list for dumping residual plots into
   
   for(err.function in errs){
     for(link.function in links){
       
       mod <- NULL
       try(mod <- gen.model(df, err.function, link.function, ...)) # model with given parameters
-      if(is.null(mod)){next}
+      if(is.null(mod)){next} # if model fails, move on to next link-error combination
       
+      mods[[length(mods) + 1]] <- mod # add model to list
       plts[[length(plts) + 1]] <- plotModel(mod)+labs(title = paste0(link.function,'/',err.function))+plot.opts # add plot of results
-      plts[[length(plts) + 1]] <- plotResiduals(mod)+labs(title = paste0(link.function,'/',err.function,' residuals'))+plot.opts # add plot of residuals
+      resids[[length(resids) + 1]] <- plotResiduals(mod)+labs(title = paste0(link.function,'/',err.function,' residuals'))+plot.opts # add plot of residuals
       
       print(paste0(link.function,' / ',err.function,' BIC: ',bic(mod))) # print BIC
       
@@ -121,10 +124,11 @@ test.params <- function(df, errs, links, ...){
       }
     }
   }
-  return(list(bic,plts))
+  return(list(bic,mods,plts,resids))
 }
 
 # need below function for plotModel.CH
+#   adapted from ndukler/superEnhancerModelR
 errorIntervals.CH <- function(x,activity,quantiles){
   if(any(quantiles>0.5)){
     stop("Quantiles 0<quantiles<0.5")
