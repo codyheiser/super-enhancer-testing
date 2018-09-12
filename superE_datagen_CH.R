@@ -4,8 +4,6 @@
 #
 # C Heiser, 2018
 
-rm(list=ls()) # clear workspace
-
 require(reshape2)
 require(dplyr)
 require(stringr)
@@ -103,8 +101,8 @@ test.params <- function(df, errs, links, ...){
   plts <- list() # initiate empty list for dumping plots into
   resids <- list() # initiate empty list for dumping residual plots into
   
-  for(err.function in errs){
-    for(link.function in links){
+  for(link.function in links){
+    for(err.function in errs){
       
       mod <- NULL
       try(mod <- gen.model(df, err.function, link.function, ...)) # model with given parameters
