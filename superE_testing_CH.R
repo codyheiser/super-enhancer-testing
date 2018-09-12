@@ -4,6 +4,9 @@
 #
 # C Heiser, 2018
 
+rm(list=ls()) # clear workspace
+
+require(ggpubr)
 source('superE_datagen_CH.R') # source functions and stuff needed to perform tests
 set.seed(18) # set seed for reproducible random number generation
 
@@ -11,13 +14,12 @@ set.seed(18) # set seed for reproducible random number generation
 sum.fig.superE <- function(plotlist, bic.vals = NULL){
   # plotlist = list of ggplot objects generated from superEnhancerModelR with all possible link/error function combinations 
   #   (see superE_datagen_CH.R)
-  # bic.plot = table of BIC values from test.params(), optional
+  # bic.vals = table of BIC values from test.params(), optional
   
   # clean plots for arranging in figure
   clean.plts <- lapply(plotlist, FUN = function(x){return(x+labs(title=NULL,x=NULL,y=NULL,color='Enhancers')+theme_pubr())})
   # arrange model plots into figure with common legend and clean graphs
-  fig <- ggarrange(plotlist = list(clean.plts[[1]], clean.plts[[4]], clean.plts[[2]], clean.plts[[5]], clean.plts[[3]], 
-                                   clean.plts[[6]]), ncol = 2, nrow = 3, common.legend = T, legend = 'right') %>%
+  fig <- ggarrange(plotlist = clean.plts, ncol = 2, nrow = 3, common.legend = T, legend = 'right') %>%
     annotate_figure(left = text_grob('Expression', rot = 90, size = 14), bottom = text_grob('Activity/-Energy', size = 14))
   # include bic plot if available
   if(!is.null(bic.vals)){
