@@ -56,7 +56,7 @@ genBglobin <- function(n, wt.norm=F, suppress.out=T){
 }
 
 # put data from genBglobin into superEnhancerModelR format
-reformat_superE <- function(df){
+reformatBglobin.superE <- function(df){
   df %>%
     melt(id.vars=c()) %>%
     rename(condition=variable, expression=value) %>%
@@ -71,7 +71,8 @@ reformat_superE <- function(df){
 }
 
 # generate model with given error and link functions
-gen.model <- function(df, err, link, enhancer.formula = ~E1+E2+E3+E4+E5+E6, ...){
+gen.model <- function(df, err, link, enhancer.formula = ~E1+E2+E3+E4+E5+E6, 
+                      maxit=2000, refine=T, threads=6, control=list(trace=500)){
   # df = data in superE format (i.e. genBglobin() %>% reformat_superE())
   # err = error function to use ('gaussian' or 'lognormal')
   # link = link function to use ('additive', 'exponential', 'logisitic')
@@ -84,45 +85,10 @@ gen.model <- function(df, err, link, enhancer.formula = ~E1+E2+E3+E4+E5+E6, ...)
   design <- df %>% select(-condition, -expression) # pull out design matrix
   actFun <- formula(enhancer.formula) # create activity function
   enhance.obj <- enhancerDataObject(expr, design, actFun, errorModel = err, linkFunction = link) %>%
-    optimDE(maxit=2000, refine=T, threads=6, control=list(trace=500), ...)
+    optimDE(maxit=maxit, refine=refine, threads=threads, control=control)
   
   print(proc.time() - start.time) # report completion time
   return(enhance.obj)
-}
-
-# function to test parameters of model
-test.params <- function(df, errs, links, ...){
-  # df = data in superE format (i.e. genBglobin() %>% reformat_superE())
-  # errs = error functions to use c('gaussian', 'lognormal')
-  # links = link functions to use c('additive', 'exponential', 'logisitic')
-  
-  bic <- NULL # initiate object to track BICs
-  mods <- list() # initiate empty list for dumping models into
-  plts <- list() # initiate empty list for dumping plots into
-  resids <- list() # initiate empty list for dumping residual plots into
-  
-  for(link.function in links){
-    for(err.function in errs){
-      
-      mod <- NULL
-      try(mod <- gen.model(df, err.function, link.function, ...)) # model with given parameters
-      if(is.null(mod)){next} # if model fails, move on to next link-error combination
-      
-      mods[[length(mods) + 1]] <- mod # add model to list
-      plts[[length(plts) + 1]] <- plotModel(mod)+labs(title = paste0(link.function,'/',err.function))+plot.opts # add plot of results
-      resids[[length(resids) + 1]] <- plotResiduals(mod)+labs(title = paste0(link.function,'/',err.function,' residuals'))+plot.opts # add plot of residuals
-      
-      print(paste0(link.function,' / ',err.function,' BIC: ',bic(mod))) # print BIC
-      
-      # append BIC information to df for output
-      if(is.null(bic)){
-        bic <- data.frame(link = link.function, error = err.function, bic = bic(mod))
-      }else{
-        bic <- rbind(bic, data.frame(link = link.function, error = err.function, bic = bic(mod)))
-      }
-    }
-  }
-  return(list(bic,mods,plts,resids))
 }
 
 # need below function for plotModel.CH
@@ -157,13 +123,12 @@ errorIntervals.CH <- function(x,activity,quantiles){
 # call these by adding them (+) to a ggplot object
 plot.opts <- list(
   theme_bw(),
-  theme(text = element_text(colour = 'black'),
-        legend.text=element_text(size=9),
+  theme(legend.text=element_text(size=9, color = 'black'),
         axis.line = element_line(colour = 'black'),
-        axis.title=element_text(size=12),
-        axis.text.x=element_text(size=10),
-        axis.text.y=element_text(size=10),
-        plot.title=element_text(size=12))
+        axis.title=element_text(size=12, color = 'black'),
+        axis.text.x=element_text(size=10, color = 'black'),
+        axis.text.y=element_text(size=10, color = 'black'),
+        plot.title=element_text(size=12, color = 'black'))
 )
 
 # plot the output of the model
@@ -192,15 +157,49 @@ plotModel.CH <- function(x){
   cc <- scales::seq_gradient_pal("light blue", "blue", "Lab")(seq(0,0.5,length.out=length(unique(err$Quantile))))
   
   g=ggplot2::ggplot()+
-    ggplot2::geom_polygon(data=err,ggplot2::aes(x=x,y=y,fill=Quantile),alpha=1)+
+    ggplot2::geom_polygon(data=err,ggplot2::aes(x=x,y=y,fill=Quantile))+
     ggplot2::scale_fill_manual(values=cc)+
     ggplot2::geom_path(data=out,ggplot2::aes(activity,expression),color="black",size=2)+
-    ggplot2::geom_point(data=real,ggplot2::aes(activity,observed,color=enhancers),shape=5)+
-    # ggplot2::theme_bw(base_size = 28)+
+    ggplot2::geom_point(data=real,ggplot2::aes(activity,observed,color=enhancers), size=2.5, alpha=0.6)+
     ggplot2::xlab("Activity/-Energy")+
     ggplot2::ylab("Expression")+
-    labs(x="Activity/-Energy", y="Expression")+#, color='Enhancers')+
+    labs(x="Activity/-Energy", y="Expression", color='Enhancers')+
     plot.opts
   
   return(g)
+}
+
+# function to test parameters of model
+test.params <- function(df, errs, links, ...){
+  # df = data in superE format (i.e. genBglobin() %>% reformat_superE())
+  # errs = error functions to use c('gaussian', 'lognormal')
+  # links = link functions to use c('additive', 'exponential', 'logisitic')
+  
+  bic <- NULL # initiate object to track BICs
+  mods <- list() # initiate empty list for dumping models into
+  plts <- list() # initiate empty list for dumping plots into
+  resids <- list() # initiate empty list for dumping residual plots into
+  
+  for(link.function in links){
+    for(err.function in errs){
+      
+      mod <- NULL
+      try(mod <- gen.model(df, err.function, link.function, ...)) # model with given parameters
+      if(is.null(mod)){next} # if model fails, move on to next link-error combination
+      
+      mods[[length(mods) + 1]] <- mod # add model to list
+      plts[[length(plts) + 1]] <- plotModel.CH(mod)+labs(title = paste0(link.function,'/',err.function)) # add plot of results
+      resids[[length(resids) + 1]] <- plotResiduals(mod)+labs(title = paste0(link.function,'/',err.function,' residuals'))+plot.opts # add plot of residuals
+      
+      print(paste0(link.function,' / ',err.function,' BIC: ',bic(mod))) # print BIC
+      
+      # append BIC information to df for output
+      if(is.null(bic)){
+        bic <- data.frame(link = link.function, error = err.function, bic = bic(mod))
+      }else{
+        bic <- rbind(bic, data.frame(link = link.function, error = err.function, bic = bic(mod)))
+      }
+    }
+  }
+  return(list(bic,mods,plts,resids))
 }
