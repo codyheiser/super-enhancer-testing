@@ -75,19 +75,21 @@ reformatBglobin.superE <- function(df){
 
 # generate model with given error and link functions
 gen.model <- function(df, err, link, enhancer.formula = ~E1+E2+E3+E4+E5+E6, 
-                      maxit=2000, refine=T, threads=6, control=list(trace=500)){
+                      maxit=2000, refine=T, threads=6, control=list(trace=500), ...){
   # df = data in superE format (i.e. genBglobin() %>% reformat_superE())
   # err = error function to use ('gaussian' or 'lognormal')
   # link = link function to use ('additive', 'exponential', 'logisitic')
   # enhancer.formula = interactions between variables to be modeled
-  # ... = options to pass to optimDE
+  # maxit = maximum iterations of optimDE() to run
+  # refine, threads, control = to optimDE()
+  # ... = options to pass to enhancerDataObject() such as activityParameterBounds, etc.
   
   start.time <- proc.time() # start timer
   
   expr <- df[['expression']] # pull out vector of expression data
   design <- df %>% select(-condition, -expression) # pull out design matrix
   actFun <- formula(enhancer.formula) # create activity function
-  enhance.obj <- enhancerDataObject(expr, design, actFun, errorModel = err, linkFunction = link) %>%
+  enhance.obj <- enhancerDataObject(expr, design, actFun, errorModel = err, linkFunction = link, ...) %>%
     optimDE(maxit=maxit, refine=refine, threads=threads, control=control)
   
   print(proc.time() - start.time) # report completion time
