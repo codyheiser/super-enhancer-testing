@@ -6,6 +6,7 @@
 
 rm(list=ls()) # clear workspace
 
+require(testthat)
 require(ggpubr)
 source('superE_datagen_CH.R') # source functions and stuff needed to perform tests
 set.seed(18) # set seed for reproducible random number generation
@@ -25,10 +26,14 @@ sum.fig.superE <- function(plotlist, bic.vals = NULL){
   if(!is.null(bic.vals)){
     bic.plt <- ggplot(data=bic.vals, aes(x=link, y=bic, fill=error))+
       geom_bar(stat='identity', position = position_dodge(width = 1))+
-      labs(x=NULL, y='BIC', fill='Error Function', title='BIC for Superenhancer Models')+
+      labs(x=NULL, y='BIC', fill='Error Function')+
+      plot.opts
+    rel.bic.plt <- ggplot(data=bic.vals, aes(x=link, y=rel.bic, fill=error))+
+      geom_bar(stat='identity', position = position_dodge(width = 1))+
+      labs(x=NULL, y='Relative BIC', fill='Error Function')+
       plot.opts
     # add bic to final figure
-    fig <- ggarrange(fig, ggarrange(bic.plt, NULL, NULL, nrow = 3), ncol = 2, widths = c(2,1), labels = 'AUTO')
+    fig <- ggarrange(fig, ggarrange(bic.plt, rel.bic.plt, NULL, nrow = 3, labels = c('B','C')), ncol = 2, widths = c(2,1), labels = 'A')
   }
   return(fig)
 }
@@ -48,85 +53,49 @@ wap_results <- test.params(wap, error.models, link.functions, enhancer.formula =
 
 # generate figure
 sum.fig.wap <- sum.fig.superE(wap_results[[3]], bic.vals = wap_results[[1]])
-ggsave(sum.fig.wap, filename = 'wap_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
+ggsave(sum.fig.wap, filename = 'outputs/wap_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
 
 
 #############################################################################################################################################
 # 10 reps, WT fixed
 fix_10 <- genBglobin(10, wt.norm = F) %>% reformat_superE()
+compare(fix_10, read.csv('inputs/beta_globin_10_fix.csv'))
 fix_10_results <- test.params(fix_10, error.models, link.functions)
 
 # generate figure
 sum.fig.fix_10 <- sum.fig.superE(fix_10_results[[3]], bic.vals = fix_10_results[[1]])
-ggsave(sum.fig.fix_10, filename = 'Bglobin_10_fix_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
-
-# save plots for each model individually
-i <- 1
-for(plt in fix_10_results[[2]]){
-  ggsave(plt, filename = paste0('wtfixed_10reps/Bglobin_fix10_',i,'.svg'), device = 'svg')
-  png(filename = paste0('wtfixed_10reps/Bglobin_fix10_',i,'.png'), width = 5, height = 3.6, units = 'in', res = 500)
-  plot(plt)
-  dev.off()
-  i <- i + 1
-}
+ggsave(sum.fig.fix_10, filename = 'outputs/Bglobin_10_fix_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
 
 
 #############################################################################################################################################
 # 100 reps, WT fixed
 fix_100 <- genBglobin(100, wt.norm = F) %>% reformat_superE()
+compare(fix_100, read.csv('inputs/beta_globin_100_fix.csv'))
 fix_100_results <- test.params(fix_100, error.models, link.functions)
 
 # generate figure
 sum.fig.fix_100 <- sum.fig.superE(fix_100_results[[3]], bic.vals = fix_100_results[[1]])
-ggsave(sum.fig.fix_100, filename = 'Bglobin_100_fix_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
-
-# save plots for each model individually
-i <- 1
-for(plt in fix_100_results[[2]]){
-  ggsave(plt, filename = paste0('wtfixed_100reps/Bglobin_fix100_',i,'.svg'), device = 'svg')
-  png(file = paste0('wtfixed_100reps/Bglobin_fix100_',i,'.png'), width = 5, height = 3.6, units = 'in', res = 500)
-  plot(plt)
-  dev.off()
-  i <- i + 1
-}
+ggsave(sum.fig.fix_100, filename = 'outputs/Bglobin_100_fix_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
 
 
 #############################################################################################################################################
 # 10 reps, WT norm
 norm_10 <- genBglobin(10, wt.norm = T) %>% reformat_superE()
+compare(norm_10, read.csv('inputs/beta_globin_10_norm.csv'))
 norm_10_results <- test.params(norm_10, error.models, link.functions)
 
 # generate figure
 sum.fig.norm_10 <- sum.fig.superE(norm_10_results[[3]], bic.vals = norm_10_results[[1]])
-ggsave(sum.fig.norm_10, filename = 'Bglobin_10_norm_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
-
-# save plots for each model individually
-i <- 1
-for(plt in norm_10_results[[2]]){
-  ggsave(plt, filename = paste0('wtnorm_10reps/Bglobin_norm10_',i,'.svg'), device = 'svg')
-  png(file = paste0('wtnorm_10reps/Bglobin_norm10_',i,'.png'), width = 5, height = 3.6, units = 'in', res = 500)
-  plot(plt)
-  dev.off()
-  i <- i + 1
-}
+ggsave(sum.fig.norm_10, filename = 'outputs/Bglobin_10_norm_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
 
 
 #############################################################################################################################################
 # 100 reps, WT norm
 norm_100 <- genBglobin(100, wt.norm = T) %>% reformat_superE()
+compare(norm_100, read.csv('inputs/beta_globin_100_norm.csv'))
 norm_100_results <- test.params(norm_100, error.models, link.functions)
 
 # generate figure
 sum.fig.norm_100 <- sum.fig.superE(norm_100_results[[3]], bic.vals = norm_100_results[[1]])
-ggsave(sum.fig.norm_100, filename = 'Bglobin_100_norm_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
-
-# save plots for each model individually
-i <- 1
-for(plt in norm_100_results[[2]]){
-  ggsave(plt, filename = paste0('wtnorm_100reps/Bglobin_norm100_',i,'.svg'), device = 'svg')
-  png(file = paste0('wtnorm_100reps/Bglobin_norm100_',i,'.png'), width = 5, height = 3.6, units = 'in', res = 500)
-  plot(plt)
-  dev.off()
-  i <- i + 1
-}
+ggsave(sum.fig.norm_100, filename = 'outputs/Bglobin_100_norm_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
 
