@@ -56,6 +56,44 @@ ggsave(sum.fig.wap, filename = 'outputs/wap_summary.pdf', device = 'pdf', width 
 
 
 #############################################################################################################################################
+# do some testing with Bglobin data:
+test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
+  # expr.reps = number of replicates of expression data for each enhancer condition. can be list. 
+  # wt.norm = if TRUE, generate normally-distributed datapoints around 1 to represent WT expression. can be list. 
+  # optim.iter = total number of iteration for optimization function to perform. can be list. 
+  # out = path to output directory
+  # ... = additional parameters to pass to enhancerDataObject()
+  
+  bglobin.data <- list()
+  bglobin.results <- list()
+  bglobin.figures <- list()
+  
+  for (norm.strategy in wt.norm) {
+    for (reps in expr.reps) {
+      for (iterations in optim.iter) {
+        # print some useful stuff to console
+        print(paste0('##################\n\nPerforming ', iterations, ' iterations on ', reps, ' expression data points with WT normalization == ', norm.strategy, '\n\n##################'))
+        
+        bglobin <- genBglobin(expr.reps, wt.norm) %>% reformatBglobin.superE()
+        result <- test.params(bglobin, error.models, link.functions, maxit = optim.iter) # build models using all error/link function combinations
+        figure <- sum.fig.superE(result[[3]], bic.vals = result[[1]])
+        ggsave(figure, filename = paste0(out, 'Bglobin_', expr.reps, '_', wt.norm, '_', optim.iter, '.pdf'), 
+               device = 'pdf', width = 12, height = 8, units = 'in')
+        
+        # append to lists for massive output
+        bglobin.data[[length(bglobin.data) + 1]] <- bglobin # add data to list
+        bglobin.results[[length(bglobin.results) + 1]] <- result # add model result to list
+        bglobin.figures[[length(bglobin.figures) + 1]] <- figure # add model figure to list
+      }
+    }
+  }
+  return(list(bglobin.data, bglobin.results, bglobin.figures))
+}
+
+test.Bglobin(expr.reps = 10, wt.norm = FALSE, optim.iter = c(500, 2000, 4000), 
+             out = '~/Dropbox/_Venters_Lab_Resources/3_Rotation_Students/4_Cody/superE/parameter_testing_091318/')
+
+#############################################################################################################################################
 # 10 reps, WT fixed
 fix_10 <- genBglobin(10, wt.norm = F) %>% reformatBglobin.superE()
 compare(fix_10, read.csv('inputs/beta_globin_10_fix.csv'))
