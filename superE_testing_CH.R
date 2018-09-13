@@ -60,11 +60,11 @@ ggsave(sum.fig.wap, filename = 'outputs/wap_summary.pdf', device = 'pdf', width 
 # 10 reps, WT fixed
 fix_10 <- genBglobin(10, wt.norm = F) %>% reformat_superE()
 compare(fix_10, read.csv('inputs/beta_globin_10_fix.csv'))
-fix_10_results <- test.params(fix_10, error.models, link.functions)
+fix_10_results <- test.params(fix_10, error.models, link.functions, maxit=4000) # TODO: test different maxit, threads, control params
 
 # generate figure
 sum.fig.fix_10 <- sum.fig.superE(fix_10_results[[3]], bic.vals = fix_10_results[[1]])
-ggsave(sum.fig.fix_10, filename = 'outputs/Bglobin_10_fix_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
+ggsave(sum.fig.fix_10, filename = 'Bglobin_10_fix_4k_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
 
 
 #############################################################################################################################################
