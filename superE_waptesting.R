@@ -1,7 +1,7 @@
 # Super Enhancer Model Testing
 #   define functions to test super enhancer statistical model fitting package (Dukler, et al. 2017)
 #
-# C Heiser, 2018
+# C Heiser, 2018 
 
 rm(list=ls()) # clear workspace
 
@@ -30,20 +30,20 @@ plot.opts <- list(
 
 # generate model with given error and link functions
 gen.model <- function(df, err, link, enhancer.formula = ~E1+E2+E3+E4+E5+E6, ...){
-  # df = data in superE format 
+  # df = data in superE format
   # err = error function to use ('gaussian' or 'lognormal')
   # link = link function to use ('additive', 'exponential', 'logisitic')
   # enhancer.formula = interactions between variables to be modeled
   # ... = options to pass to optimDE
-  
+
   start.time <- proc.time() # start timer
-  
+
   expr <- df[['expression']] # pull out vector of expression data
   design <- df %>% select(-condition, -expression) # pull out design matrix
   actFun <- formula(enhancer.formula) # create activity function
   enhance.obj <- enhancerDataObject(expr, design, actFun, errorModel = err, linkFunction = link) %>%
-    optimDE(maxit=2000, refine=T, threads=6, control=list(trace=500), ...)
-  
+    optimDE(maxit=3000, refine=T, threads=6, control=list(trace=500), ...)
+
   print(proc.time() - start.time) # report completion time
   return(enhance.obj)
 }
@@ -53,25 +53,25 @@ test.params <- function(df, errs, links, ...){
   # df = data in superE format (i.e. genBglobin() %>% reformat_superE())
   # errs = error functions to use c('gaussian', 'lognormal')
   # links = link functions to use c('additive', 'exponential', 'logisitic')
-  
+
   bic <- NULL # initiate object to track BICs
   mods <- list() # initiate empty list for dumping models into
   plts <- list() # initiate empty list for dumping plots into
   resids <- list() # initiate empty list for dumping residual plots into
-  
+
   for(link.function in links){
     for(err.function in errs){
-      
+
       mod <- NULL
       try(mod <- gen.model(df, err.function, link.function, ...)) # model with given parameters
       if(is.null(mod)){next} # if model fails, move on to next link-error combination
-      
+
       mods[[length(mods) + 1]] <- mod # add model to list
       plts[[length(plts) + 1]] <- plotModel(mod)+labs(title = paste0(link.function,'/',err.function)) # add plot of results
       resids[[length(resids) + 1]] <- plotResiduals(mod)+labs(title = paste0(link.function,'/',err.function,' residuals'))+plot.opts # add plot of residuals
-      
+
       print(paste0(link.function,' / ',err.function,' BIC: ',bic(mod))) # print BIC
-      
+
       # append BIC information to df for output
       if(is.null(bic)){
         bic <- data.frame(link = link.function, error = err.function, bic = bic(mod))
@@ -86,10 +86,10 @@ test.params <- function(df, errs, links, ...){
 
 # define function to plot multiple complete plot objects on one image
 sum.fig.superE <- function(plotlist, bic.vals = NULL){
-  # plotlist = list of ggplot objects generated from superEnhancerModelR with all possible link/error function combinations 
+  # plotlist = list of ggplot objects generated from superEnhancerModelR with all possible link/error function combinations
   #   (see superE_datagen_CH.R)
   # bic.vals = table of BIC values from test.params(), optional
-  
+
   # clean plots for arranging in figure
   clean.plts <- lapply(plotlist, FUN = function(x){return(x+labs(title=NULL,x=NULL,y=NULL,color='Enhancers')+theme_pubr())})
   # arrange model plots into figure with common legend and clean graphs
