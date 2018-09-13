@@ -9,7 +9,6 @@ rm(list=ls()) # clear workspace
 require(testthat)
 require(ggpubr)
 source('superE_datagen_CH.R') # source functions and stuff needed to perform tests
-set.seed(18) # set seed for reproducible random number generation
 
 # define function to plot multiple complete plot objects on one image
 sum.fig.superE <- function(plotlist, bic.vals = NULL){
@@ -58,7 +57,7 @@ ggsave(sum.fig.wap, filename = 'outputs/wap_summary.pdf', device = 'pdf', width 
 
 #############################################################################################################################################
 # 10 reps, WT fixed
-fix_10 <- genBglobin(10, wt.norm = F) %>% reformat_superE()
+fix_10 <- genBglobin(10, wt.norm = F) %>% reformatBglobin.superE()
 compare(fix_10, read.csv('inputs/beta_globin_10_fix.csv'))
 fix_10_results <- test.params(fix_10, error.models, link.functions)
 
@@ -69,7 +68,7 @@ ggsave(sum.fig.fix_10, filename = 'outputs/Bglobin_10_fix_summary.pdf', device =
 
 #############################################################################################################################################
 # 100 reps, WT fixed
-fix_100 <- genBglobin(100, wt.norm = F) %>% reformat_superE()
+fix_100 <- genBglobin(100, wt.norm = F) %>% reformatBglobin.superE()
 compare(fix_100, read.csv('inputs/beta_globin_100_fix.csv'))
 fix_100_results <- test.params(fix_100, error.models, link.functions)
 
@@ -80,7 +79,7 @@ ggsave(sum.fig.fix_100, filename = 'outputs/Bglobin_100_fix_summary.pdf', device
 
 #############################################################################################################################################
 # 10 reps, WT norm
-norm_10 <- genBglobin(10, wt.norm = T) %>% reformat_superE()
+norm_10 <- genBglobin(10, wt.norm = T) %>% reformatBglobin.superE()
 compare(norm_10, read.csv('inputs/beta_globin_10_norm.csv'))
 norm_10_results <- test.params(norm_10, error.models, link.functions)
 
@@ -91,7 +90,7 @@ ggsave(sum.fig.norm_10, filename = 'outputs/Bglobin_10_norm_summary.pdf', device
 
 #############################################################################################################################################
 # 100 reps, WT norm
-norm_100 <- genBglobin(100, wt.norm = T) %>% reformat_superE()
+norm_100 <- genBglobin(100, wt.norm = T) %>% reformatBglobin.superE()
 compare(norm_100, read.csv('inputs/beta_globin_100_norm.csv'))
 norm_100_results <- test.params(norm_100, error.models, link.functions)
 
