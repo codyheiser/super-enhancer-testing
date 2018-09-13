@@ -23,7 +23,10 @@ mutate_cond <- function(.data, condition, ..., envir = parent.frame()){
 }
 
 # generate n random numbers that are Norm distributed with designated mean and sd
-rnorm2 <- function(n,mean,sd) {mean+sd*scale(rnorm(n))} 
+rnorm2 <- function(n,mean,sd,seed=18){
+  set.seed(seed) # set seed for reproducible random number generation
+  return(mean+sd*scale(rnorm(n)))
+} 
 
 # generate data frame of random expression values using given means and sds
 genBglobin <- function(n, wt.norm=F, suppress.out=T){
@@ -35,18 +38,18 @@ genBglobin <- function(n, wt.norm=F, suppress.out=T){
   ## creating data set for beta globin LCR based 
   ## on mean and standard deviation given in Bender 2001 and 2012
   if(wt.norm){
-    WT <- rnorm2(n,1.00,0.05) # if specified, generate random WT data with mean of 1.0 and expected SD
+    WT <- rnorm2(n,1.00,0.05,seed=1) # if specified, generate random WT data with mean of 1.0 and expected SD
   }else{
     WT <- rep(1,n) # otherwise, use default of 1.0 for all WT datapoints
   }
-  D1 <- rnorm2(n,0.78,0.05) # generated data for HS1 deletion 
-  D2 <- rnorm2(n,0.59,0.04) # generated data for HS2 deletion 
-  D3 <- rnorm2(n,0.71,0.03) # generated data for HS3 deletion 
-  D4 <- rnorm2(n,0.81,0.05) # generated data for HS4 deletion 
-  D56 <- rnorm2(n,0.97,0.09) # generated data for HS5-6 deletion 
-  D14 <- rnorm2(n,0.60,0.03) # generated data for HS1 and HS4 deletion 
-  D12 <- rnorm2(n,0.39,0.01) # generated data for HS1-2 deletion 
-  D23 <- rnorm2(n,0.31,0.02) # generated data for HS2-3 deletion 
+  D1 <- rnorm2(n,0.78,0.05,seed=2) # generated data for HS1 deletion 
+  D2 <- rnorm2(n,0.59,0.04,seed=3) # generated data for HS2 deletion 
+  D3 <- rnorm2(n,0.71,0.03,seed=4) # generated data for HS3 deletion 
+  D4 <- rnorm2(n,0.81,0.05,seed=5) # generated data for HS4 deletion 
+  D56 <- rnorm2(n,0.97,0.09,seed=6) # generated data for HS5-6 deletion 
+  D14 <- rnorm2(n,0.60,0.03,seed=7) # generated data for HS1 and HS4 deletion 
+  D12 <- rnorm2(n,0.39,0.01,seed=8) # generated data for HS1-2 deletion 
+  D23 <- rnorm2(n,0.31,0.02,seed=9) # generated data for HS2-3 deletion 
   
   Bglobin <- data.frame(WT=WT, E1=D1, E2=D2, E3=D3, E4=D4, E56=D56, E12=D12, E14=D14, E23=D23)
   if(!suppress.out){
