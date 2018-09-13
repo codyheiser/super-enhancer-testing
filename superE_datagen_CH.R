@@ -201,5 +201,6 @@ test.params <- function(df, errs, links, ...){
       }
     }
   }
-  return(list(bic,mods,plts,resids))
+  bic$rel.bic <- bic$bic - (bic %>% filter(link=='additive', error=='gaussian'))$bic # calculate BICs relative to additive/gaussian combo
+  return(list(bic,mods,plts,resids)) # return as list of objects
 }
