@@ -72,12 +72,12 @@ test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
     for (reps in expr.reps) {
       for (iterations in optim.iter) {
         # print some useful stuff to console
-        print(paste0('##################\n\nPerforming ', iterations, ' iterations on ', reps, ' expression data points with WT normalization == ', norm.strategy, '\n\n##################'))
+        print(paste0('Performing ', iterations, ' iterations on ', reps, ' expression data points with WT normalization == ', norm.strategy))
         
-        bglobin <- genBglobin(expr.reps, wt.norm) %>% reformatBglobin.superE()
-        result <- test.params(bglobin, error.models, link.functions, maxit = optim.iter) # build models using all error/link function combinations
+        bglobin <- genBglobin(reps, norm.strategy) %>% reformatBglobin.superE()
+        result <- test.params(bglobin, error.models, link.functions, maxit = iterations) # build models using all error/link function combinations
         figure <- sum.fig.superE(result[[3]], bic.vals = result[[1]])
-        ggsave(figure, filename = paste0(out, 'Bglobin_', expr.reps, '_', wt.norm, '_', optim.iter, '.pdf'), 
+        ggsave(figure, filename = paste0(out, 'Bglobin_', reps, '_', norm.strategy, '_', iterations, '.pdf'), 
                device = 'pdf', width = 12, height = 8, units = 'in')
         
         # append to lists for massive output
@@ -90,49 +90,6 @@ test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
   return(list(bglobin.data, bglobin.results, bglobin.figures))
 }
 
-test.Bglobin(expr.reps = 10, wt.norm = FALSE, optim.iter = c(500, 2000, 4000), 
+master <- test.Bglobin(expr.reps = c(5,10,100), wt.norm = c(FALSE, TRUE), optim.iter = c(500, 2000, 4000, 10000), 
              out = '~/Dropbox/_Venters_Lab_Resources/3_Rotation_Students/4_Cody/superE/parameter_testing_091318/')
-
-#############################################################################################################################################
-# 10 reps, WT fixed
-fix_10 <- genBglobin(10, wt.norm = F) %>% reformatBglobin.superE()
-compare(fix_10, read.csv('inputs/beta_globin_10_fix.csv'))
-fix_10_results <- test.params(fix_10, error.models, link.functions, maxit=4000) # TODO: test different maxit, threads, control params
-
-# generate figure
-sum.fig.fix_10 <- sum.fig.superE(fix_10_results[[3]], bic.vals = fix_10_results[[1]])
-ggsave(sum.fig.fix_10, filename = 'Bglobin_10_fix_4k_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
-
-
-#############################################################################################################################################
-# 100 reps, WT fixed
-fix_100 <- genBglobin(100, wt.norm = F) %>% reformatBglobin.superE()
-compare(fix_100, read.csv('inputs/beta_globin_100_fix.csv'))
-fix_100_results <- test.params(fix_100, error.models, link.functions)
-
-# generate figure
-sum.fig.fix_100 <- sum.fig.superE(fix_100_results[[3]], bic.vals = fix_100_results[[1]])
-ggsave(sum.fig.fix_100, filename = 'outputs/Bglobin_100_fix_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
-
-
-#############################################################################################################################################
-# 10 reps, WT norm
-norm_10 <- genBglobin(10, wt.norm = T) %>% reformatBglobin.superE()
-compare(norm_10, read.csv('inputs/beta_globin_10_norm.csv'))
-norm_10_results <- test.params(norm_10, error.models, link.functions)
-
-# generate figure
-sum.fig.norm_10 <- sum.fig.superE(norm_10_results[[3]], bic.vals = norm_10_results[[1]])
-ggsave(sum.fig.norm_10, filename = 'outputs/Bglobin_10_norm_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
-
-
-#############################################################################################################################################
-# 100 reps, WT norm
-norm_100 <- genBglobin(100, wt.norm = T) %>% reformatBglobin.superE()
-compare(norm_100, read.csv('inputs/beta_globin_100_norm.csv'))
-norm_100_results <- test.params(norm_100, error.models, link.functions)
-
-# generate figure
-sum.fig.norm_100 <- sum.fig.superE(norm_100_results[[3]], bic.vals = norm_100_results[[1]])
-ggsave(sum.fig.norm_100, filename = 'outputs/Bglobin_100_norm_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
 
