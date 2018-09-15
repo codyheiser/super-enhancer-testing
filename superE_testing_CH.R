@@ -56,7 +56,20 @@ ggsave(sum.fig.wap, filename = 'outputs/wap_summary.pdf', device = 'pdf', width 
 
 
 #############################################################################################################################################
-# do some testing with Bglobin data:
+# Example alpha-globin data from super-enhancer-code and Dukler, et al (2017)
+Aglobin <- read.csv('inputs/alpha_globin_data.csv') # load alpha-globin data
+# TODO: reshape data
+
+# generate results for all link/error function combinations
+Aglobin_results <- test.params(Aglobin, error.models, link.functions, enhancer.formula = ~E1+E2+E3) # TODO: get proper enhancer formula
+
+# generate figure
+sum.fig.Aglobin <- sum.fig.superE(Aglobin_results[[3]], bic.vals = Aglobin_results[[1]])
+ggsave(sum.fig.Aglobin, filename = 'outputs/Aglobin_summary.pdf', device = 'pdf', width = 12, height = 8, units = 'in')
+
+
+#############################################################################################################################################
+# do some testing with contrived  Bglobin data:
 test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
   # expr.reps = number of replicates of expression data for each enhancer condition. can be list. 
   # wt.norm = if TRUE, generate normally-distributed datapoints around 1 to represent WT expression. can be list. 
