@@ -92,7 +92,7 @@ test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
         bglobin <- genBglobin(reps, norm.strategy) %>% reformatBglobin.superE()
         
         # run test on Bglobin data using all six link/error function combos
-        result <- test.params(bglobin, error.models, link.functions, maxit = iterations) # build models using all error/link function combinations
+        result <- test.params(bglobin, error.models, link.functions, maxit = iterations, ...) # build models using all error/link function combinations
         
         # append important info to master.out df
         master.link <- data.frame()
@@ -128,5 +128,6 @@ test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
   return(list(master.out, bglobin.results, bglobin.figures))
 }
 
-master2 <- test.Bglobin(expr.reps = 5, wt.norm = FALSE, optim.iter = c(500, 2000), 
-             out = '~/Dropbox/_Venters_Lab_Resources/3_Rotation_Students/4_Cody/superE/parameter_testing_091718/')
+master2 <- test.Bglobin(expr.reps = 10, wt.norm = FALSE, optim.iter = c(500, 2000, 4000, 10000), activityParameterBounds = c(10^-2, 10^2),
+                        errorParameterBounds = c(10^-2, 10^2), scaleParameterBounds = c(10^-2, 10^2), 
+                        out = '~/Dropbox/_Venters_Lab_Resources/3_Rotation_Students/4_Cody/superE/parameter_testing_091718/')
