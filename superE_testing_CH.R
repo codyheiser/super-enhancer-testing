@@ -6,6 +6,7 @@
 
 rm(list=ls()) # clear workspace
 
+require(plyr)
 require(testthat)
 require(ggpubr)
 source('superE_datagen_CH.R') # source functions and stuff needed to perform tests
@@ -77,9 +78,9 @@ test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
   # out = path to output directory
   # ... = additional parameters to pass to enhancerDataObject()
   
-  bglobin.data <- list()
   bglobin.results <- list()
   bglobin.figures <- list()
+  master.out <- data.frame() # initiate df for dumping fit parameters and BICs into
   
   for (norm.strategy in wt.norm) {
     for (reps in expr.reps) {
@@ -87,22 +88,45 @@ test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
         # print some useful stuff to console
         print(paste0('Performing ', iterations, ' iterations on ', reps, ' expression data points with WT normalization == ', norm.strategy))
         
+        # generate Bglobin data and put into superE format
         bglobin <- genBglobin(reps, norm.strategy) %>% reformatBglobin.superE()
+        
+        # run test on Bglobin data using all six link/error function combos
         result <- test.params(bglobin, error.models, link.functions, maxit = iterations) # build models using all error/link function combinations
+        
+        # append important info to master.out df
+        master.link <- data.frame()
+        for (model in 1:length(result[[2]])) {
+          # get linkFunction$value into df format
+          temp.link <- as.data.frame(result[[2]][[model]]@linkFunction$value) %>%
+            mutate(variable = rownames(as.data.frame(result[[2]][[model]]@linkFunction$value))) %>%
+            dplyr::rename(value = 1) %>%
+            spread(variable, value) %>%
+            # append link and error function info
+            mutate(link = result[[2]][[model]]@linkFunction$type, 
+                   error = result[[2]][[model]]@errorModel$type, 
+                   error.sd = result[[2]][[model]]@errorModel$value[['sd']])
+          temp.link <- cbind(temp.link, data.frame(norm.strategy = norm.strategy, expr.reps = reps, optim.iter = iterations))
+          # add linkFunction to master frame
+          master.link <- rbind.fill(master.link, temp.link)
+        }
+        # merge link df with BIC df and append to master.out
+        master.out <- rbind.fill(master.out, merge(master.link, result[[1]], by = c('link','error'))) 
+        
+        # generate pretty figure and save to .pdf file
         figure <- sum.fig.superE(result[[3]], bic.vals = result[[1]])
         ggsave(figure, filename = paste0(out, 'Bglobin_', reps, '_', norm.strategy, '_', iterations, '.pdf'), 
                device = 'pdf', width = 12, height = 8, units = 'in')
         
         # append to lists for massive output
-        bglobin.data[[length(bglobin.data) + 1]] <- bglobin # add data to list
         bglobin.results[[length(bglobin.results) + 1]] <- result # add model result to list
         bglobin.figures[[length(bglobin.figures) + 1]] <- figure # add model figure to list
       }
     }
   }
-  return(list(bglobin.data, bglobin.results, bglobin.figures))
+  write.csv(master.out, file = paste0(out,'results_',Sys.Date(),'.csv'), row.names = F)
+  return(list(master.out, bglobin.results, bglobin.figures))
 }
 
-master <- test.Bglobin(expr.reps = c(5,10,100), wt.norm = c(FALSE, TRUE), optim.iter = c(500, 2000, 4000, 10000), 
-             out = '~/Dropbox/_Venters_Lab_Resources/3_Rotation_Students/4_Cody/superE/parameter_testing_091318/')
-
+master2 <- test.Bglobin(expr.reps = 5, wt.norm = FALSE, optim.iter = c(500, 2000), 
+             out = '~/Dropbox/_Venters_Lab_Resources/3_Rotation_Students/4_Cody/superE/parameter_testing_091718/')
