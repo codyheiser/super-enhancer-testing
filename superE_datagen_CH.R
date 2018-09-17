@@ -62,7 +62,7 @@ genBglobin <- function(n, wt.norm=F, suppress.out=T){
 reformatBglobin.superE <- function(df){
   df %>%
     melt(id.vars=c()) %>%
-    rename(condition=variable, expression=value) %>%
+    dplyr::rename(condition=variable, expression=value) %>%
     mutate(E1=1,E2=1,E3=1,E4=1,E5=1,E6=1) %>%
     mutate_cond(str_detect(condition,'1'), E1=0) %>% 
     mutate_cond(str_detect(condition,'2'), E2=0) %>% 
