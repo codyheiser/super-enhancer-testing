@@ -1,14 +1,17 @@
-# Data Generator for SuperEnhancer R Package
+# Data Generator and Testing Functions for SuperEnhancer R Package
 #   define functions using code from AP to generate randomized B-globin expression data with different n
-#   and iterations for testing of SuperEnhancer statistical model fitting package (Dukler, et al, 2018)
+#   and iterations for testing of SuperEnhancer statistical model fitting package (Dukler, et al, 2017)
 #
 # C Heiser, 2018
 
 require(reshape2)
+require(plyr)
 require(dplyr)
 require(stringr)
 require(tidyr)
 require(ggplot2)
+require(testthat)
+require(ggpubr)
 require(superEnhancerModelR)
 
 # conditionally mutate rows of dataframe as part of dplyr::mutate function
@@ -125,7 +128,7 @@ errorIntervals.CH <- function(x,activity,quantiles){
 }
 
 # preferred plotting options
-# call these by adding them (+) to a ggplot object
+#   call these by adding them (+) to a ggplot object
 plot.opts <- list(
   theme_bw(),
   theme(legend.text=element_text(size=9, color = 'black'),
@@ -208,4 +211,31 @@ test.params <- function(df, errs, links, ...){
   }
   bic$rel.bic <- bic$bic - (bic %>% filter(link=='additive', error=='gaussian'))$bic # calculate BICs relative to additive/gaussian combo
   return(list(bic,mods,plts,resids)) # return as list of objects
+}
+
+# define function to plot multiple complete plot objects on one image
+sum.fig.superE <- function(plotlist, bic.vals = NULL){
+  # plotlist = list of ggplot objects generated from superEnhancerModelR with all possible link/error function combinations 
+  #   (see superE_datagen_CH.R)
+  # bic.vals = table of BIC values from test.params(), optional
+  
+  # clean plots for arranging in figure
+  clean.plts <- lapply(plotlist, FUN = function(x){return(x+labs(title=NULL,x=NULL,y=NULL,color='Enhancers')+theme_pubr())})
+  # arrange model plots into figure with common legend and clean graphs
+  fig <- ggarrange(plotlist = clean.plts, ncol = 2, nrow = 3, common.legend = T, legend = 'right') %>%
+    annotate_figure(left = text_grob('Expression', rot = 90, size = 14), bottom = text_grob('Activity/-Energy', size = 14))
+  # include bic plot if available
+  if(!is.null(bic.vals)){
+    bic.plt <- ggplot(data=bic.vals, aes(x=link, y=bic, fill=error))+
+      geom_bar(stat='identity', position = position_dodge(width = 1))+
+      labs(x=NULL, y='BIC', fill='Error Function')+
+      plot.opts
+    rel.bic.plt <- ggplot(data=bic.vals, aes(x=link, y=rel.bic, fill=error))+
+      geom_bar(stat='identity', position = position_dodge(width = 1))+
+      labs(x=NULL, y='Relative BIC', fill='Error Function')+
+      plot.opts
+    # add bic to final figure
+    fig <- ggarrange(fig, ggarrange(bic.plt, rel.bic.plt, NULL, nrow = 3, labels = c('B','C')), ncol = 2, widths = c(2,1), labels = 'A')
+  }
+  return(fig)
 }

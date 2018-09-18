@@ -1,20 +1,15 @@
 # Testing SuperEnhancer R Package
 #   use code from AP to generate randomized B-globin expression data with different n and iterations 
-#   for testing of SuperEnhancer statistical model fitting package (Dukler, et al, 2018)
+#   for testing of SuperEnhancer statistical model fitting package (Dukler, et al, 2017)
 #
 # C Heiser, 2018
 
 rm(list=ls()) # clear workspace
-
-suppressPackageStartupMessages(require(plyr))
-suppressPackageStartupMessages(require(testthat))
-suppressPackageStartupMessages(require(ggpubr))
 suppressPackageStartupMessages(require(argparse))
-suppressPackageStartupMessages(source('superE_datagen_CH.R')) # source functions and stuff needed to perform tests
+suppressPackageStartupMessages(source('utilityfunctions_superE.R')) # source functions needed to perform tests
 
 # create parser object
 parser <- ArgumentParser()
-
 # import options
 parser$add_argument('outputlocation', 
                     help='Path to directory to save outputs.')
@@ -30,42 +25,13 @@ parser$add_argument('-eb', '--errorbounds',  default='c(10^-3, 10^3)',
                     help='Error parameter bounds to pass to superEnhancerDataObject() function.')
 parser$add_argument('-sb', '--scalebounds',  default='c(10^-3, 10^3)',
                     help='Scale parameter bounds to pass to superEnhancerDataObject() function.')
-
 # get command line options, if help encountered print help and exit,
-# otherwise if options not found on command line, set defaults
+#   otherwise if options not found on command line, set defaults
 args <- parser$parse_args()
-
-# define function to plot multiple complete plot objects on one image
-sum.fig.superE <- function(plotlist, bic.vals = NULL){
-  # plotlist = list of ggplot objects generated from superEnhancerModelR with all possible link/error function combinations 
-  #   (see superE_datagen_CH.R)
-  # bic.vals = table of BIC values from test.params(), optional
-  
-  # clean plots for arranging in figure
-  clean.plts <- lapply(plotlist, FUN = function(x){return(x+labs(title=NULL,x=NULL,y=NULL,color='Enhancers')+theme_pubr())})
-  # arrange model plots into figure with common legend and clean graphs
-  fig <- ggarrange(plotlist = clean.plts, ncol = 2, nrow = 3, common.legend = T, legend = 'right') %>%
-    annotate_figure(left = text_grob('Expression', rot = 90, size = 14), bottom = text_grob('Activity/-Energy', size = 14))
-  # include bic plot if available
-  if(!is.null(bic.vals)){
-    bic.plt <- ggplot(data=bic.vals, aes(x=link, y=bic, fill=error))+
-      geom_bar(stat='identity', position = position_dodge(width = 1))+
-      labs(x=NULL, y='BIC', fill='Error Function')+
-      plot.opts
-    rel.bic.plt <- ggplot(data=bic.vals, aes(x=link, y=rel.bic, fill=error))+
-      geom_bar(stat='identity', position = position_dodge(width = 1))+
-      labs(x=NULL, y='Relative BIC', fill='Error Function')+
-      plot.opts
-    # add bic to final figure
-    fig <- ggarrange(fig, ggarrange(bic.plt, rel.bic.plt, NULL, nrow = 3, labels = c('B','C')), ncol = 2, widths = c(2,1), labels = 'A')
-  }
-  return(fig)
-}
 
 # define parameters to test
 error.models <- c('gaussian','lognormal')
 link.functions <- c('additive','exponential','logistic')
-
 
 # do some testing with contrived  Bglobin data:
 test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
@@ -75,8 +41,6 @@ test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
   # out = path to output directory
   # ... = additional parameters to pass to enhancerDataObject()
   
-  bglobin.results <- list()
-  bglobin.figures <- list()
   master.out <- data.frame() # initiate df for dumping fit parameters and BICs into
   
   for (norm.strategy in wt.norm) {
@@ -112,19 +76,14 @@ test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
         
         # generate pretty figure and save to .pdf file
         figure <- sum.fig.superE(result[[3]], bic.vals = result[[1]])
-        ggsave(figure, filename = paste0(out, 'Bglobin_', reps, '_', norm.strategy, '_', iterations, '.pdf'), 
+        ggsave(figure, filename = paste0(out, 'BglobinSummary_', reps, 'reps_norm', norm.strategy, '_', iterations, 'iter_', Sys.Date(), '.pdf'), 
                device = 'pdf', width = 12, height = 8, units = 'in')
-        
-        # append to lists for massive output
-        bglobin.results[[length(bglobin.results) + 1]] <- result # add model result to list
-        bglobin.figures[[length(bglobin.figures) + 1]] <- figure # add model figure to list
       }
     }
   }
-  write.csv(master.out, file = paste0(out,'results_',Sys.Date(),'.csv'), row.names = F)
+  write.csv(master.out, file = paste0(out,'BglobinResults_',Sys.Date(),'.csv'), row.names = F)
 }
 
 test.Bglobin(expr.reps = as.numeric(args$replicates), wt.norm = args$wtnorm, optim.iter = as.numeric(args$iterations), 
              out = args$outputlocation, activityParameterBounds = eval(parse(text=args$activitybounds)), 
              errorParameterBounds = eval(parse(text=args$errorbounds)), scaleParameterBounds = eval(parse(text=args$scalebounds)))
-

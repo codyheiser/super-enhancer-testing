@@ -1,47 +1,16 @@
 # Testing SuperEnhancer R Package
 #   use code from AP to generate randomized B-globin expression data with different n and iterations 
-#   for testing of SuperEnhancer statistical model fitting package (Dukler, et al, 2018)
+#   for testing of SuperEnhancer statistical model fitting package (Dukler, et al, 2017)
 #
 # C Heiser, 2018
 
 rm(list=ls()) # clear workspace
 
-require(plyr)
-require(testthat)
-require(ggpubr)
-source('superE_datagen_CH.R') # source functions and stuff needed to perform tests
-
-# define function to plot multiple complete plot objects on one image
-sum.fig.superE <- function(plotlist, bic.vals = NULL){
-  # plotlist = list of ggplot objects generated from superEnhancerModelR with all possible link/error function combinations 
-  #   (see superE_datagen_CH.R)
-  # bic.vals = table of BIC values from test.params(), optional
-  
-  # clean plots for arranging in figure
-  clean.plts <- lapply(plotlist, FUN = function(x){return(x+labs(title=NULL,x=NULL,y=NULL,color='Enhancers')+theme_pubr())})
-  # arrange model plots into figure with common legend and clean graphs
-  fig <- ggarrange(plotlist = clean.plts, ncol = 2, nrow = 3, common.legend = T, legend = 'right') %>%
-    annotate_figure(left = text_grob('Expression', rot = 90, size = 14), bottom = text_grob('Activity/-Energy', size = 14))
-  # include bic plot if available
-  if(!is.null(bic.vals)){
-    bic.plt <- ggplot(data=bic.vals, aes(x=link, y=bic, fill=error))+
-      geom_bar(stat='identity', position = position_dodge(width = 1))+
-      labs(x=NULL, y='BIC', fill='Error Function')+
-      plot.opts
-    rel.bic.plt <- ggplot(data=bic.vals, aes(x=link, y=rel.bic, fill=error))+
-      geom_bar(stat='identity', position = position_dodge(width = 1))+
-      labs(x=NULL, y='Relative BIC', fill='Error Function')+
-      plot.opts
-    # add bic to final figure
-    fig <- ggarrange(fig, ggarrange(bic.plt, rel.bic.plt, NULL, nrow = 3, labels = c('B','C')), ncol = 2, widths = c(2,1), labels = 'A')
-  }
-  return(fig)
-}
+source('utilityfunctions_superE.R') # source functions and stuff needed to perform tests
 
 # define parameters to test
 error.models <- c('gaussian','lognormal')
 link.functions <- c('additive','exponential','logistic')
-
 
 #############################################################################################################################################
 # Example wap data from superEnhancerModelR package
