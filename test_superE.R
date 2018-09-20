@@ -14,8 +14,10 @@ parser$add_argument('data',
                     help='Path to data in superEnhancerModelR format as .csv file.')
 parser$add_argument('outputlocation', 
                     help='Path to directory to save outputs.')
-parser$add_argument('-i', '--iterations', nargs='+', 
-                    help='Number of iterations to perform in optimDE(). Can be list of values.')
+parser$add_argument('-i', '--iterations', nargs='+', default='2000',
+                    help='Number of iterations to perform in optimDE(). Can be list of values. Default 2000.')
+parser$add_argument('-f', '--formula', default='~E1+E2+E3+E4+E5+E6',
+                    help='Formula describing enhancer interactions. Default ~E1+E2+E3+E4+E5+E6.')
 parser$add_argument('-ab', '--activitybounds',  default='c(10^-3, 10^3)',
                     help='Activity bounds to pass to superEnhancerDataObject() function.')
 parser$add_argument('-eb', '--errorbounds',  default='c(10^-3, 10^3)',
@@ -72,9 +74,13 @@ test.model <- function(df, optim.iter, out = 'outputs/', ...){
       ggsave(figure, filename = paste0(out, 'superE_Summary_', iterations, 'iter_', Sys.Date(),'.pdf'), 
              device = 'pdf', width = 12, height = 8, units = 'in')
   }
+  # append metadata to df for export
+  master.out %>%
+    mutate(enhancer.formula = args$formula, activity.bounds = args$activitybounds, error.bounds = args$errorbounds, scale.bounds = args$scalebounds) -> master.out
+  # export data
   write.csv(master.out, file = paste0(out,'superE_Results_',Sys.Date(),'.csv'), row.names = F)
 }
 
-test.model(df = datain, optim.iter = as.numeric(args$iterations), 
-           out = args$outputlocation, activityParameterBounds = eval(parse(text=args$activitybounds)), 
+test.model(df = datain, optim.iter = as.numeric(args$iterations), out = args$outputlocation, 
+           enhancer.formula = eval(parse(text=args$formula)), activityParameterBounds = eval(parse(text=args$activitybounds)), 
            errorParameterBounds = eval(parse(text=args$errorbounds)), scaleParameterBounds = eval(parse(text=args$scalebounds)))
