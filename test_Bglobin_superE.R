@@ -13,12 +13,14 @@ parser <- ArgumentParser()
 # import options
 parser$add_argument('outputlocation', 
                     help='Path to directory to save outputs.')
-parser$add_argument('-r', '--replicates',
-                    help='Number of B-globin expression values to generate per enhancer condition. Can be list of values.')
-parser$add_argument('-i', '--iterations', 
-                    help='Number of iterations to perform in optimDE(). Can be list of values.')
-parser$add_argument('-wt', '--wtnorm', type='logical', default=F,
+parser$add_argument('-r', '--replicates', nargs='+', default='10',
+                    help='Number of B-globin expression values to generate per enhancer condition. Can be list of values. Default 10.')
+parser$add_argument('-i', '--iterations', nargs='+', default='2000',
+                    help='Number of iterations to perform in optimDE(). Can be list of values. Default 2000.')
+parser$add_argument('-wt', '--wtnorm', type='logical', nargs='+', default=F, 
                     help='Whether or not to generate random expression values around 1 for WT data. Can be list of values. Default FALSE.')
+parser$add_argument('-f', '--formula', default='~E1+E2+E3+E4+E5+E6',
+                    help='Formula describing enhancer interactions. Default ~E1+E2+E3+E4+E5+E6.')
 parser$add_argument('-ab', '--activitybounds',  default='c(10^-3, 10^3)',
                     help='Activity bounds to pass to superEnhancerDataObject() function.')
 parser$add_argument('-eb', '--errorbounds',  default='c(10^-3, 10^3)',
@@ -81,9 +83,13 @@ test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
       }
     }
   }
+  # append metadata to df for export
+  master.out %>%
+    mutate(enhancer.formula = args$formula, activity.bounds = args$activitybounds, error.bounds = args$errorbounds, scale.bounds = args$scalebounds) -> master.out
+  # export data
   write.csv(master.out, file = paste0(out,'BglobinResults_',Sys.Date(),'.csv'), row.names = F)
 }
 
-test.Bglobin(expr.reps = as.numeric(args$replicates), wt.norm = args$wtnorm, optim.iter = as.numeric(args$iterations), 
-             out = args$outputlocation, activityParameterBounds = eval(parse(text=args$activitybounds)), 
+test.Bglobin(expr.reps = as.numeric(args$replicates), wt.norm = args$wtnorm, optim.iter = as.numeric(args$iterations), out = args$outputlocation, 
+             enhancer.formula = eval(parse(text=args$formula)), activityParameterBounds = eval(parse(text=args$activitybounds)), 
              errorParameterBounds = eval(parse(text=args$errorbounds)), scaleParameterBounds = eval(parse(text=args$scalebounds)))
