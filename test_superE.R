@@ -35,7 +35,7 @@ error.models <- c('gaussian','lognormal')
 link.functions <- c('additive','exponential','logistic')
 
 # define testing function
-test.model <- function(df, optim.iter, out = 'outputs/', ...){
+test.model <- function(df, optim.iter, out = 'outputs/', enhancer.formula, activity.bounds = c(10^-3, 10^3), error.bounds = c(10^-3, 10^3), scale.bounds = c(10^-3, 10^3), ...){
   # df = data in superE format
   # optim.iter = total number of iteration for optimization function to perform. can be list. 
   # out = path to output directory
@@ -45,10 +45,10 @@ test.model <- function(df, optim.iter, out = 'outputs/', ...){
   
   for (iterations in optim.iter) {
       # print some useful stuff to console
-      print(paste0('Performing ', iterations, ' iterations on ', args$data))
+      print(paste0('Performing ', iterations, ' iterations'))
     
       # run test using all six link/error function combos
-      result <- test.params(df, error.models, link.functions, maxit = iterations, ...) # build models using all error/link function combinations
+      result <- test.params(df, error.models, link.functions, maxit = iterations, enhancer.formula = enhancer.formula, ...) # build models using all error/link function combinations
         
       # append important info to master.out df
       master.link <- data.frame()
@@ -76,7 +76,7 @@ test.model <- function(df, optim.iter, out = 'outputs/', ...){
   }
   # append metadata to df for export
   master.out %>%
-    mutate(enhancer.formula = args$formula, activity.bounds = args$activitybounds, error.bounds = args$errorbounds, scale.bounds = args$scalebounds) -> master.out
+    mutate(enhancer.formula = deparse(enhancer.formula), activity.bounds = deparse(activity.bounds), error.bounds = deparse(error.bounds), scale.bounds = deparse(scale.bounds)) -> master.out
   # export data
   write.csv(master.out, file = paste0(out,'superE_Results_',Sys.Date(),'.csv'), row.names = F)
 }
