@@ -18,7 +18,7 @@ parser$add_argument('-i', '--iterations', nargs='+', default='2000',
                     help='Number of iterations to perform in optimDE(). Can be list of values. Default 2000.')
 parser$add_argument('-f', '--formula', default='~E1+E2+E3+E4+E5+E6',
                     help='Formula describing enhancer interactions. Default ~E1+E2+E3+E4+E5+E6.')
-parser$add_argument('-ab', '--activitybounds',  default='c(10^-3, 10^3)',
+parser$add_argument('-ab', '--activitybounds',  default='c(-150, 150)',
                     help='Activity bounds to pass to superEnhancerDataObject() function.')
 parser$add_argument('-eb', '--errorbounds',  default='c(10^-3, 10^3)',
                     help='Error parameter bounds to pass to superEnhancerDataObject() function.')
@@ -30,12 +30,18 @@ args <- parser$parse_args()
 # read data into df
 datain <- read.csv(args$data)
 
+i <- as.numeric(args$iterations)
+f <- eval(parse(text=args$formula))
+ab <- eval(parse(text=args$activitybounds))
+eb <- eval(parse(text=args$errorbounds))
+sb <- eval(parse(text=args$scalebounds))
+
 # define parameters to test
 error.models <- c('gaussian','lognormal')
 link.functions <- c('additive','exponential','logistic')
 
 # define testing function
-test.model <- function(df, optim.iter, out = 'outputs/', enhancer.formula, activity.bounds = c(10^-3, 10^3), error.bounds = c(10^-3, 10^3), scale.bounds = c(10^-3, 10^3), ...){
+test.model <- function(df, optim.iter, out = 'outputs/', enhancer.formula, activity.bounds = c(-150,150), error.bounds = c(10^-3, 10^3), scale.bounds = c(10^-3, 10^3), ...){
   # df = data in superE format
   # optim.iter = total number of iteration for optimization function to perform. can be list. 
   # out = path to output directory
@@ -81,6 +87,5 @@ test.model <- function(df, optim.iter, out = 'outputs/', enhancer.formula, activ
   write.csv(master.out, file = paste0(out,'superE_Results_',Sys.Date(),'.csv'), row.names = F)
 }
 
-test.model(df = datain, optim.iter = as.numeric(args$iterations), out = args$outputlocation, 
-           enhancer.formula = eval(parse(text=args$formula)), activityParameterBounds = eval(parse(text=args$activitybounds)), 
-           errorParameterBounds = eval(parse(text=args$errorbounds)), scaleParameterBounds = eval(parse(text=args$scalebounds)))
+test.model(df = datain, optim.iter = i, out = args$outputlocation,
+           enhancer.formula = f, activityParameterBounds = ab, errorParameterBounds = eb, scaleParameterBounds = sb)
