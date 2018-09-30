@@ -4,14 +4,9 @@
 #
 # C Heiser, 2018
 
+require(reshape2)
+require(plyr)
 require(tidyverse)
-#require(reshape2)
-#require(plyr)
-#require(dplyr)
-#require(stringr)
-#require(tidyr)
-#require(ggplot2)
-#require(testthat)
 require(ggpubr)
 require(superEnhancerModelR)
 
@@ -206,7 +201,7 @@ test.params <- function(df, errs, links, enhancer.formula = ~E1+E2+E3+E4+E5+E6, 
     for(err.function in errs){
       
       mod <- NULL
-      try(mod <- gen.model(df, err = err.function, link = link.function, enhancer.formula = enahncer.formula, maxit = maxit, 
+      try(mod <- gen.model(df, err = err.function, link = link.function, enhancer.formula = enhancer.formula, maxit = maxit, 
                            actBounds = actBounds, errBounds = errBounds, scaleBounds = scaleBounds)) # model with given parameters
       if(is.null(mod)){next} # if model fails, move on to next link-error combination
       

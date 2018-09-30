@@ -91,4 +91,4 @@ test.model <- function(df, optim.iter, out = 'outputs/', enhancer.formula, activ
 }
 
 test.model(df = datain, optim.iter = i, out = args$outputlocation, enhancer.formula = f, 
-           activityParameterBounds = ab, errorParameterBounds = eb, scaleParameterBounds = sb)
+           activity.bounds = ab, error.bounds = eb, scale.bounds = sb)
