@@ -4,13 +4,14 @@
 #
 # C Heiser, 2018
 
-require(reshape2)
-require(plyr)
-require(dplyr)
-require(stringr)
-require(tidyr)
-require(ggplot2)
-require(testthat)
+require(tidyverse)
+#require(reshape2)
+#require(plyr)
+#require(dplyr)
+#require(stringr)
+#require(tidyr)
+#require(ggplot2)
+#require(testthat)
 require(ggpubr)
 require(superEnhancerModelR)
 
@@ -26,33 +27,41 @@ mutate_cond <- function(.data, condition, ..., envir = parent.frame()){
 }
 
 # generate n random numbers that are Norm distributed with designated mean and sd
-rnorm2 <- function(n,mean,sd,seed=18){
-  set.seed(seed) # set seed for reproducible random number generation
+rnorm2 <- function(n,mean,sd,seed=NA){
+  if(!is.na(seed)){
+    set.seed(seed) # set seed for reproducible random number generation
+  }
   return(mean+sd*scale(rnorm(n)))
 } 
 
 # generate data frame of random expression values using given means and sds
-genBglobin <- function(n, wt.norm=F, suppress.out=T){
+genBglobin <- function(n, wt.norm=F, set.seed = T, suppress.out=T){
   # n = number of replicates of expression data to randomly generate for each condition
   # wt.norm = generate random, normally-distributed points for WT set? default no.
   # suppress.out = write to .csv file? default no.
+  
+  if(set.seed){
+    seed = 1:9
+  }else{
+    seed = rep(NA, 9)
+  }
   
   ### From beta_globin-generateData.R, AP:
   ## creating data set for beta globin LCR based 
   ## on mean and standard deviation given in Bender 2001 and 2012
   if(wt.norm){
-    WT <- rnorm2(n,1.00,0.05,seed=1) # if specified, generate random WT data with mean of 1.0 and expected SD
+    WT <- rnorm2(n,1.00,0.05,seed[1]) # if specified, generate random WT data with mean of 1.0 and expected SD
   }else{
     WT <- rep(1,n) # otherwise, use default of 1.0 for all WT datapoints
   }
-  D1 <- rnorm2(n,0.78,0.05,seed=2) # generated data for HS1 deletion 
-  D2 <- rnorm2(n,0.59,0.04,seed=3) # generated data for HS2 deletion 
-  D3 <- rnorm2(n,0.71,0.03,seed=4) # generated data for HS3 deletion 
-  D4 <- rnorm2(n,0.81,0.05,seed=5) # generated data for HS4 deletion 
-  D56 <- rnorm2(n,0.97,0.09,seed=6) # generated data for HS5-6 deletion 
-  D14 <- rnorm2(n,0.60,0.03,seed=7) # generated data for HS1 and HS4 deletion 
-  D12 <- rnorm2(n,0.39,0.01,seed=8) # generated data for HS1-2 deletion 
-  D23 <- rnorm2(n,0.31,0.02,seed=9) # generated data for HS2-3 deletion 
+  D1 <- rnorm2(n,0.78,0.05,seed=seed[2]) # generated data for HS1 deletion 
+  D2 <- rnorm2(n,0.59,0.04,seed=seed[3]) # generated data for HS2 deletion 
+  D3 <- rnorm2(n,0.71,0.03,seed=seed[4]) # generated data for HS3 deletion 
+  D4 <- rnorm2(n,0.81,0.05,seed=seed[5]) # generated data for HS4 deletion 
+  D56 <- rnorm2(n,0.97,0.09,seed=seed[6]) # generated data for HS5-6 deletion 
+  D14 <- rnorm2(n,0.60,0.03,seed=seed[7]) # generated data for HS1 and HS4 deletion 
+  D12 <- rnorm2(n,0.39,0.01,seed=seed[8]) # generated data for HS1-2 deletion 
+  D23 <- rnorm2(n,0.31,0.02,seed=seed[9]) # generated data for HS2-3 deletion 
   
   Bglobin <- data.frame(WT=WT, E1=D1, E2=D2, E3=D3, E4=D4, E56=D56, E12=D12, E14=D14, E23=D23)
   if(!suppress.out){
@@ -77,23 +86,24 @@ reformatBglobin.superE <- function(df){
 }
 
 # generate model with given error and link functions
-gen.model <- function(df, err, link, enhancer.formula = ~E1+E2+E3+E4+E5+E6, 
-                      maxit=2000, refine=T, threads=6, control=list(trace=500), ...){
+gen.model <- function(df, err, link, enhancer.formula = ~E1+E2+E3+E4+E5+E6, maxit=2000, 
+                      actBounds=c(-150,150), errBounds=c(10^-3, 10^3), scaleBounds=c(10^-3, 10^3)){
   # df = data in superE format (i.e. genBglobin() %>% reformat_superE())
   # err = error function to use ('gaussian' or 'lognormal')
   # link = link function to use ('additive', 'exponential', 'logisitic')
   # enhancer.formula = interactions between variables to be modeled
   # maxit = maximum iterations of optimDE() to run
-  # refine, threads, control = to optimDE()
-  # ... = options to pass to enhancerDataObject() such as activityParameterBounds, etc.
+  # actBounds, errBounds, scaleBounds = options to pass to enhancerDataObject() that restrict search for coefficients
   
   start.time <- proc.time() # start timer
   
   expr <- df[['expression']] # pull out vector of expression data
   design <- df %>% select(-condition, -expression) # pull out design matrix
   actFun <- formula(enhancer.formula) # create activity function
-  enhance.obj <- enhancerDataObject(expr, design, actFun, errorModel = err, linkFunction = link, ...) %>%
-    optimDE(maxit=maxit, refine=refine, threads=threads, control=control)
+  enhance.obj <- enhancerDataObject(expr, design, actFun, errorModel = err, linkFunction = link, 
+                                    activityParameterBounds = actBounds, errorParameterBounds = errBounds,
+                                    scaleParameterBounds = scaleBounds) %>%
+    optimDE(maxit=maxit, refine=T, threads=6, control=list(trace=500))
   
   print(proc.time() - start.time) # report completion time
   return(enhance.obj)
@@ -178,10 +188,14 @@ plotModel.CH <- function(x){
 }
 
 # function to test parameters of model
-test.params <- function(df, errs, links, ...){
+test.params <- function(df, errs, links, enhancer.formula = ~E1+E2+E3+E4+E5+E6, maxit=2000, 
+                        actBounds=c(-150,150), errBounds=c(10^-3, 10^3), scaleBounds=c(10^-3, 10^3)){
   # df = data in superE format (i.e. genBglobin() %>% reformat_superE())
   # errs = error functions to use c('gaussian', 'lognormal')
   # links = link functions to use c('additive', 'exponential', 'logisitic')
+  # enhancer.formula = interactions between variables to be modeled
+  # maxit = maximum iterations of optimDE() to run
+  # actBounds, errBounds, scaleBounds = options to pass to enhancerDataObject() that restrict search for coefficients
   
   bic <- NULL # initiate object to track BICs
   mods <- list() # initiate empty list for dumping models into
@@ -192,7 +206,8 @@ test.params <- function(df, errs, links, ...){
     for(err.function in errs){
       
       mod <- NULL
-      try(mod <- gen.model(df, err.function, link.function, ...)) # model with given parameters
+      try(mod <- gen.model(df, err = err.function, link = link.function, enhancer.formula = enahncer.formula, maxit = maxit, 
+                           actBounds = actBounds, errBounds = errBounds, scaleBounds = scaleBounds)) # model with given parameters
       if(is.null(mod)){next} # if model fails, move on to next link-error combination
       
       mods[[length(mods) + 1]] <- mod # add model to list
@@ -239,3 +254,6 @@ sum.fig.superE <- function(plotlist, bic.vals = NULL){
   }
   return(fig)
 }
+
+# extract link function coefficient values and generate plots
+
