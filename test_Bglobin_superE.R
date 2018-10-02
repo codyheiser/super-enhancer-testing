@@ -11,37 +11,47 @@ suppressPackageStartupMessages(source('utilityfunctions_superE.R')) # source fun
 # create parser object
 parser <- ArgumentParser()
 # import options
+parser$add_argument('data',
+                    help='Path to data in superEnhancerModelR format as .csv file.')
 parser$add_argument('outputlocation', 
                     help='Path to directory to save outputs.')
-parser$add_argument('-r', '--replicates', nargs='+', default='10',
-                    help='Number of B-globin expression values to generate per enhancer condition. Can be list of values. Default 10.')
 parser$add_argument('-i', '--iterations', nargs='+', default='2000',
                     help='Number of iterations to perform in optimDE(). Can be list of values. Default 2000.')
-parser$add_argument('-wt', '--wtnorm', type='logical', nargs='+', default=F, 
-                    help='Whether or not to generate random expression values around 1 for WT data. Can be list of values. Default FALSE.')
 parser$add_argument('-f', '--formula', default='~E1+E2+E3+E4+E5+E6',
                     help='Formula describing enhancer interactions. Default ~E1+E2+E3+E4+E5+E6.')
-parser$add_argument('-ab', '--activitybounds',  default='c(10^-3, 10^3)',
-                    help='Activity bounds to pass to superEnhancerDataObject() function.')
+parser$add_argument('-ab', '--activitybounds',  default='c(-150, 150)',
+                    help='Activity bounds to pass to superEnhancerDataObject() function. Default [-150, 150].')
 parser$add_argument('-eb', '--errorbounds',  default='c(10^-3, 10^3)',
-                    help='Error parameter bounds to pass to superEnhancerDataObject() function.')
+                    help='Error parameter bounds to pass to superEnhancerDataObject() function. Default [0.001, 1000].')
 parser$add_argument('-sb', '--scalebounds',  default='c(10^-3, 10^3)',
-                    help='Scale parameter bounds to pass to superEnhancerDataObject() function.')
+                    help='Scale parameter bounds to pass to superEnhancerDataObject() function. Default [0.001, 1000].')
 # get command line options, if help encountered print help and exit,
 #   otherwise if options not found on command line, set defaults
 args <- parser$parse_args()
+# read data into df
+datain <- read.csv(args$data)
+
+r <- as.numeric(args$replicates)
+wt <- args$wtnorm
+i <- as.numeric(args$iterations)
+f <- eval(parse(text=args$formula))
+ab <- eval(parse(text=args$activitybounds))
+eb <- eval(parse(text=args$errorbounds))
+sb <- eval(parse(text=args$scalebounds))
 
 # define parameters to test
 error.models <- c('gaussian','lognormal')
 link.functions <- c('additive','exponential','logistic')
 
 # do some testing with contrived  Bglobin data:
-test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
+test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', enhancer.formula, activity.bounds = c(-150,150), error.bounds = c(10^-3, 10^3), scale.bounds = c(10^-3, 10^3)){
   # expr.reps = number of replicates of expression data for each enhancer condition. can be list. 
   # wt.norm = if TRUE, generate normally-distributed datapoints around 1 to represent WT expression. can be list. 
   # optim.iter = total number of iteration for optimization function to perform. can be list. 
   # out = path to output directory
-  # ... = additional parameters to pass to enhancerDataObject()
+  # enhancer.formula = interactions between variables to be modeled
+  # maxit = maximum iterations of optimDE() to run
+  # activity.bounds, error.bounds, scale.bounds = options to pass to enhancerDataObject() that restrict search for coefficients
   
   master.out <- data.frame() # initiate df for dumping fit parameters and BICs into
   
@@ -85,11 +95,10 @@ test.Bglobin <- function(expr.reps, wt.norm, optim.iter, out = 'outputs/', ...){
   }
   # append metadata to df for export
   master.out %>%
-    mutate(enhancer.formula = args$formula, activity.bounds = args$activitybounds, error.bounds = args$errorbounds, scale.bounds = args$scalebounds) -> master.out
+    mutate(enhancer.formula = deparse(enhancer.formula), activity.bounds = deparse(activity.bounds), error.bounds = deparse(error.bounds), scale.bounds = deparse(scale.bounds)) -> master.out
   # export data
   write.csv(master.out, file = paste0(out,'BglobinResults_',Sys.Date(),'.csv'), row.names = F)
 }
 
-test.Bglobin(expr.reps = as.numeric(args$replicates), wt.norm = args$wtnorm, optim.iter = as.numeric(args$iterations), out = args$outputlocation, 
-             enhancer.formula = eval(parse(text=args$formula)), activityParameterBounds = eval(parse(text=args$activitybounds)), 
-             errorParameterBounds = eval(parse(text=args$errorbounds)), scaleParameterBounds = eval(parse(text=args$scalebounds)))
+test.Bglobin(expr.reps = r, wt.norm = wt, df = datain, optim.iter = i, out = args$outputlocation, 
+             enhancer.formula = f, activity.bounds = ab, error.bounds = eb, scale.bounds = sb)
