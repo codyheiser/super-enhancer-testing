@@ -10,7 +10,16 @@ Testing models of super enhancer activity using superEnhancerModelR package from
 ##### `test_superE.R`
 Command-line generation of `superEnhancerModelR` models using all combinations of Link and Error functions, returning plots of model fits and BIC/relative BIC values and a _.csv_ file of coefficients and metadata for each model.  
   
-usage:  
+Usage:  
 ```
 Rscript test_superE.R [-h] [-i ITERATIONS [ITERATIONS ...]] [-f FORMULA] [-ab ACTIVITYBOUNDS] [-eb ERRORBOUNDS] [-sb SCALEBOUNDS] data outputlocation
 ```
+  
+Generates figures containing:  
+* A) fits of all Link and Error function combinations, 
+* B) along with calculated BIC for each model,
+* C) and relative BIC (difference from Additive/Gaussian model)
+  
+![alt text][fig]
+
+[fig]: dev/superE_Summary_10000iter_2018-09-30.pdf "test_superE.R figure using wap data"
