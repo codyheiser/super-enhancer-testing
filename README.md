@@ -16,8 +16,8 @@ Rscript test_superE.R [-h] [-i ITERATIONS [ITERATIONS ...]] [-f FORMULA] [-ab AC
 ```
   
 Generates figures containing:  
-* A) fits of all Link and Error function combinations, 
-* B) along with calculated BIC for each model,
-* C) and relative BIC (difference from Additive/Gaussian model)
+	A) fits of all Link and Error function combinations,  
+	B) along with calculated BIC for each model,  
+	C) and relative BIC (difference from Additive/Gaussian model)  
   
-![fig](dev/superE_Summary_10000iter_2018-09-30.pdf)
+![alt text](dev/superE_Summary_10000iter_2018-09-30.png)
