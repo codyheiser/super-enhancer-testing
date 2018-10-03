@@ -20,6 +20,4 @@ Generates figures containing:
 * B) along with calculated BIC for each model,
 * C) and relative BIC (difference from Additive/Gaussian model)
   
-![alt text][fig]
-
-[fig]: dev/superE_Summary_10000iter_2018-09-30.pdf "test_superE.R figure using wap data"
+![fig](dev/superE_Summary_10000iter_2018-09-30.pdf)
