@@ -5,6 +5,9 @@
 
 rm(list=ls()) # clear workspace
 suppressPackageStartupMessages(require(argparse))
+suppressPackageStartupMessages(require(parallel))
+suppressPackageStartupMessages(require(doParallel))
+suppressPackageStartupMessages(require(foreach))
 suppressPackageStartupMessages(source('utilityfunctions_superE.R')) # source functions needed to perform tests
 
 # create parser object
@@ -49,16 +52,21 @@ test.model <- function(df, optim.iter, out = 'outputs/', enhancer.formula, activ
   # maxit = maximum iterations of optimDE() to run
   # activity.bounds, error.bounds, scale.bounds = options to pass to enhancerDataObject() that restrict search for coefficients
   
-  master.out <- data.frame() # initiate df for dumping fit parameters and BICs into
+  registerDoParallel()
   
-  for (iterations in optim.iter) {
+  master.out = foreach (iterations = optim.iter, .verbose = T, .combine = rbind) %dopar% {
       # print some useful stuff to console
-      print(paste0('Performing ', iterations, ' iterations'))
+      #print(paste0('Performing ', iterations, ' iterations'))
     
       # run test using all six link/error function combos
       result <- test.params(df, error.models, link.functions, maxit = iterations, enhancer.formula = enhancer.formula, 
                             actBounds = activity.bounds, errBounds = error.bounds, scaleBounds = scale.bounds) # build models using all error/link function combinations
-        
+      
+      # generate pretty figure and save to .pdf file
+      figure <- sum.fig.superE(result[[3]], bic.vals = result[[1]])
+      ggsave(figure, filename = paste0(out, 'superE_Summary_', iterations, 'iter_', Sys.Date(),'.pdf'), 
+             device = 'pdf', width = 12, height = 8, units = 'in')
+      
       # append important info to master.out df
       master.link <- data.frame()
       for (model in 1:length(result[[2]])) {
@@ -76,13 +84,9 @@ test.model <- function(df, optim.iter, out = 'outputs/', enhancer.formula, activ
         master.link <- rbind.fill(master.link, temp.link)
       }
       # merge link df with BIC df and append to master.out
-      master.out <- rbind.fill(master.out, merge(master.link, result[[1]], by = c('link','error'))) 
-        
-      # generate pretty figure and save to .pdf file
-      figure <- sum.fig.superE(result[[3]], bic.vals = result[[1]])
-      ggsave(figure, filename = paste0(out, 'superE_Summary_', iterations, 'iter_', Sys.Date(),'.pdf'), 
-             device = 'pdf', width = 12, height = 8, units = 'in')
+      out <- merge(master.link, result[[1]], by = c('link','error')) 
   }
+  
   # append metadata to df for export
   master.out %>%
     mutate(enhancer.formula = deparse(enhancer.formula), activity.bounds = deparse(activity.bounds), error.bounds = deparse(error.bounds), scale.bounds = deparse(scale.bounds)) -> master.out
