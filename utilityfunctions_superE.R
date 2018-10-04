@@ -10,17 +10,6 @@ require(tidyverse)
 require(ggpubr)
 require(superEnhancerModelR)
 
-# conditionally mutate rows of dataframe as part of dplyr::mutate function
-mutate_cond <- function(.data, condition, ..., envir = parent.frame()){
-  # This function performs a __mutate__ operation on a subset of rows of a dataframe without the need for __filter__ or __group_by__
-  # and returns the output in place. Because of this, you cannot create new columns within this function as you can using normal
-  # __dplyr::mutate__. Instead, ensure output columns are already initialized in the dataframe.
-  condition <- eval(substitute(condition), .data, envir)
-  .data[condition,] %>%
-    mutate(...) -> .data[condition,]
-  return(.data)
-}
-
 # generate n random numbers that are Norm distributed with designated mean and sd
 rnorm2 <- function(n,mean,sd,seed=NA){
   if(!is.na(seed)){
@@ -65,6 +54,17 @@ genBglobin <- function(n, wt.norm=F, set.seed = T, suppress.out=T){
   return(Bglobin)
 }
 
+# conditionally mutate rows of dataframe as part of dplyr::mutate function
+mutate_cond <- function(.data, condition, ..., envir = parent.frame()){
+  # This function performs a __mutate__ operation on a subset of rows of a dataframe without the need for __filter__ or __group_by__
+  # and returns the output in place. Because of this, you cannot create new columns within this function as you can using normal
+  # __dplyr::mutate__. Instead, ensure output columns are already initialized in the dataframe.
+  condition <- eval(substitute(condition), .data, envir)
+  .data[condition,] %>%
+    mutate(...) -> .data[condition,]
+  return(.data)
+}
+
 # put data from genBglobin into superEnhancerModelR format
 reformatBglobin.superE <- function(df){
   df %>%
@@ -92,15 +92,16 @@ gen.model <- function(df, err, link, enhancer.formula = ~E1+E2+E3+E4+E5+E6, maxi
   
   start.time <- proc.time() # start timer
   
-  expr <- df[['expression']] # pull out vector of expression data
-  design <- df %>% select(-condition, -expression) # pull out design matrix
-  actFun <- formula(enhancer.formula) # create activity function
-  enhance.obj <- enhancerDataObject(expr, design, actFun, errorModel = err, linkFunction = link, 
-                                    activityParameterBounds = actBounds, errorParameterBounds = errBounds,
-                                    scaleParameterBounds = scaleBounds) %>%
-    optimDE(maxit=maxit, refine=T, threads=6, control=list(trace=500))
+  if(maxit < 800){t <- 1}else{t <- 6} # determine parallelization based on number of iterations to run
+  
+  # create and optimize enhancer data model object
+  enhance.obj <- enhancerDataObject(df[['expression']], df %>% select(-condition, -expression), formula(enhancer.formula), 
+                                    errorModel = err, linkFunction = link, activityParameterBounds = actBounds, 
+                                    errorParameterBounds = errBounds, scaleParameterBounds = scaleBounds) %>%
+    optimDE(maxit=maxit, refine=T, threads=t, control=list(trace=round_any(maxit/10, 100, f = ceiling)))
   
   print(proc.time() - start.time) # report completion time
+  
   return(enhance.obj)
 }
 
@@ -154,12 +155,10 @@ plotModel.CH <- function(x){
   
   ## Get factor ordering of rows
   temp=data.frame(rname=rname,nenh=rowSums(x@designMatrix),stringsAsFactors = FALSE)
-  lvls=unique(with(temp,temp[order(nenh,rname),])$rname)
   
   ## Get activity values for actual oberservations
-  act=computeActivity(x)
-  real=data.frame(activity=act,observed=x@expressionData,enhancers=rname,stringsAsFactors = FALSE)
-  real$enhancers=factor(real$enhancers,levels=lvls)
+  real=data.frame(activity=computeActivity(x),observed=x@expressionData,enhancers=rname,stringsAsFactors = FALSE)
+  real$enhancers=factor(real$enhancers,levels=unique(with(temp,temp[order(nenh,rname),])$rname))
   
   ## Compute expression values for intermediate activity to get smooth curve
   sim.act=seq(min(real$activity)-abs(min(real$activity))*0.1,max(real$activity)+abs(max(real$activity))*0.1,by=0.01)
@@ -172,7 +171,7 @@ plotModel.CH <- function(x){
   g=ggplot2::ggplot()+
     ggplot2::geom_polygon(data=err,ggplot2::aes(x=x,y=y,fill=Quantile))+
     ggplot2::scale_fill_manual(values=cc)+
-    ggplot2::geom_path(data=out,ggplot2::aes(activity,expression),color="black",size=2)+
+    ggplot2::geom_path(data=out,ggplot2::aes(activity,expression),color="black",size=1.5)+
     ggplot2::geom_point(data=real,ggplot2::aes(activity,observed,color=enhancers), size=2.5, alpha=0.6)+
     ggplot2::xlab("Activity/-Energy")+
     ggplot2::ylab("Expression")+
@@ -192,10 +191,11 @@ test.params <- function(df, errs, links, enhancer.formula = ~E1+E2+E3+E4+E5+E6, 
   # maxit = maximum iterations of optimDE() to run
   # actBounds, errBounds, scaleBounds = options to pass to enhancerDataObject() that restrict search for coefficients
   
+  start.time <- proc.time() # start timer
+  
   bic <- NULL # initiate object to track BICs
   mods <- list() # initiate empty list for dumping models into
   plts <- list() # initiate empty list for dumping plots into
-  resids <- list() # initiate empty list for dumping residual plots into
   
   for(link.function in links){
     for(err.function in errs){
@@ -207,7 +207,6 @@ test.params <- function(df, errs, links, enhancer.formula = ~E1+E2+E3+E4+E5+E6, 
       
       mods[[length(mods) + 1]] <- mod # add model to list
       plts[[length(plts) + 1]] <- plotModel.CH(mod)+labs(title = paste0(link.function,'/',err.function)) # add plot of results
-      resids[[length(resids) + 1]] <- plotResiduals(mod)+labs(title = paste0(link.function,'/',err.function,' residuals'))+plot.opts # add plot of residuals
       
       print(paste0(link.function,' / ',err.function,' BIC: ',bic(mod))) # print BIC
       
@@ -220,7 +219,9 @@ test.params <- function(df, errs, links, enhancer.formula = ~E1+E2+E3+E4+E5+E6, 
     }
   }
   bic$rel.bic <- bic$bic - (bic %>% filter(link=='additive', error=='gaussian'))$bic # calculate BICs relative to additive/gaussian combo
-  return(list(bic,mods,plts,resids)) # return as list of objects
+  
+  print(proc.time()-start.time)
+  return(list(bic,mods,plts)) # return as list of objects
 }
 
 # define function to plot multiple complete plot objects on one image
@@ -230,7 +231,7 @@ sum.fig.superE <- function(plotlist, bic.vals = NULL){
   # bic.vals = table of BIC values from test.params(), optional
   
   # clean plots for arranging in figure
-  clean.plts <- lapply(plotlist, FUN = function(x){return(x+labs(title=NULL,x=NULL,y=NULL,color='Enhancers')+theme_pubr())})
+  clean.plts <- lapply(plotlist, FUN = function(x){return(x+labs(x=NULL,y=NULL,color='Enhancers')+theme_pubr())})
   # arrange model plots into figure with common legend and clean graphs
   fig <- ggarrange(plotlist = clean.plts, ncol = 2, nrow = 3, common.legend = T, legend = 'right') %>%
     annotate_figure(left = text_grob('Expression', rot = 90, size = 14), bottom = text_grob('Activity/-Energy', size = 14))
