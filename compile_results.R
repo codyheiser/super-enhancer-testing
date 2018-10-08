@@ -4,6 +4,7 @@
 
 rm(list=ls())
 source('utilityfunctions_superE.R')
+require(tools)
 
 #########################################################################################################################
 # Define functions
@@ -56,6 +57,29 @@ read.all <- function(filetype, dir = '.', ...){
   return(combined)
 }
 
+# split vector by delimeter, return element as vector
+vectorsplit <- function(v, delim = '\\_', keep = 1){
+  # v = vector of strings to split
+  # delim = delimiter
+  # keep = which element to return as list
+  return(sapply(strsplit(as.character(v),delim), `[`, keep))
+}
+
+# split a column of strings from a data.frame to two columns by a delimiter
+columnsplit <- function(df, clmn, newnames = c('name1', 'name2'), drop.orig = F, ...){
+  # df = data.frame to operate on
+  # clmn = name of column in df to split
+  # newnames = vector containing new column names, in order
+  # drop.orig = remove original clmn from data.frame?
+  # ... = options to pass to vectorsplit function; specifically "delimiter = '\\_'"
+  eval(parse(text = paste0('df$',newnames[1],'<-vectorsplit(df$',clmn,',...,keep=1)'))) # put string from before delim into column with name1
+  eval(parse(text = paste0('df$',newnames[2],'<-vectorsplit(df$',clmn,',...,keep=2)'))) # put string from after delim into column with name2
+  if(drop.orig){
+    eval(parse(text = paste0('df<-subset(df, select = -',clmn,')'))) # drop original column from df if drop.orig flag set to TRUE
+  }
+  return(df)
+}
+
 # plot raw expression values from df in superE format 
 plot.raw.expr <- function(superEdata, plot.title){
   return(
@@ -89,21 +113,55 @@ ggsave(plot = raw.fig, filename = 'outputs/raw_expression_fig.pdf', device = 'pd
 
 #########################################################################################################################
 # compile results from b.globin testing 
-master <- read.all(filetype = 'csv', 
-                   dir = '~/Dropbox/_Venters_Lab_Resources/3_Rotation_Students/4_Cody/superE/Bglobin_30Sep18/')
+read.all(filetype = 'csv',
+         dir = '~/Dropbox/_Venters_Lab_Resources/3_Rotation_Students/4_Cody/superE/Bglobin_30Sep18/') %>%
+  rename(`x-Int.`=X.Intercept., Scale=scale, `Activity Bounds`=activity.bounds) %>% # clean up some column names
+  mutate(temp = vectorsplit(vectorsplit(file, "\\."), "X", 2)) %>% # extract replicate and WT normalization from filename
+  columnsplit(clmn = 'temp', newnames = c('Replicates','WT'), drop.orig = T, delim = "\\_") -> master
 
+# determine lowest BIC in each test cohort and create 'winner' column in master df
+master %>% 
+  group_by(file, optim.iter) %>% 
+  filter(bic==min(bic)) %>%
+  mutate(winner = T) -> low.bic
+master %>%
+  group_by(file, optim.iter) %>%
+  filter(bic!=min(bic)) %>%
+  mutate(winner = F) %>%
+  bind_rows(low.bic) -> master
+
+# write false positive BIC calls to .csv file
+low.bic %>%
+  select(link, error, optim.iter, bic, rel.bic, `Activity Bounds`, Replicates, WT) %>%
+  filter(link!='additive') %>%
+  write.csv('outputs/false_positives.csv', row.names = F)
+
+# generate plot of BIC values
+master %>%
+  filter(error=='lognormal') %>% # ignore gaussian error for plotting simplicity
+  ggplot(aes(x = link, y = bic, color = `Activity Bounds`, shape = winner))+
+  scale_color_manual(values = c('c(-10, 10)'='firebrick1', 'c(-50, 50)'='firebrick3', 'c(-100, 100)'='goldenrod1',
+                     'c(-150, 150)'='goldenrod2', 'c(-500, 500)'='goldenrod3', 'c(-1000, 1000)'='goldenrod4'))+
+  geom_jitter(width = 0.2, size = 3, alpha = 0.6)+
+  labs(x = NULL, y = 'BIC', shape = 'Best Fit', title = 'BIC Values for Log-Normal Error')+
+  plot.opts+
+  theme(axis.text.x = element_text(angle = 50, hjust = 1), 
+        panel.grid.minor.y = element_blank(), panel.grid.major.x = element_blank())+
+  facet_grid(Replicates~optim.iter, scales = 'free') -> lognormal.bic.plt
+ggsave(plot = lognormal.bic.plt, filename = 'outputs/lognormal_bic.pdf', device = 'pdf', height = 6, width = 8, units = 'in')
+
+# generate summary figure of link coefficients to show convergence based on replicates, bounds, and iterations
 plt.list <- list()
-for(bounds in unique(master$activity.bounds)){
+for(bounds in unique(master$`Activity Bounds`)){
   master %>%
-    rename(`x-Int.`=X.Intercept., Scale=scale, `Activity Bounds`=activity.bounds) %>%
     filter(`Activity Bounds`==bounds) %>%
     gather(key = 'variable', value = 'value', `x-Int.`, E1, E2, E3, E4, E5, E6, Scale) %>%
     ggplot(aes(x = variable, y = value, color = optim.iter))+
     geom_jitter(width = 0.2,size = 2.5, alpha = 0.6)+
-    facet_grid(link~error, scales = 'free')+
-    labs(x=NULL,y=NULL, title = bounds)+
+    facet_grid(link~Replicates, scales = 'free')+
+    labs(x=NULL,y=NULL, title = bounds, color = 'Optimization\nIterations')+
     plot.opts +
-    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) -> plt
+    theme(panel.grid.major.x = element_blank(), panel.grid.minor.y = element_blank()) -> plt
   assign(paste0(bounds,'.plt'), plt)
   plt.list <- append(plt.list, paste0(bounds,'.plt'))
 }
@@ -111,7 +169,6 @@ coeff.fig <- ggarrange(plotlist = eval(parse(text = paste0('list(`',paste(unlist
                      ncol = 2, nrow = 3, align = "v", labels = 'auto', common.legend = T, legend = 'right') %>%
   annotate_figure(left = text_grob('Value', rot = 90, size = 14),
                   bottom = text_grob('Link Coefficient', size = 14))
-ggsave(plot = coeff.fig, filename = 'outputs/link_coeff_fig.pdf', device = 'pdf', height = 16, width = 18, units = 'in')
-
+ggsave(plot = coeff.fig, filename = 'outputs/link_coeff_fig.pdf', device = 'pdf', height = 14, width = 16, units = 'in')
 
 
