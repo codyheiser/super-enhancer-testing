@@ -82,10 +82,14 @@ columnsplit <- function(df, clmn, newnames = c('name1', 'name2'), drop.orig = F,
 
 # plot raw expression values from df in superE format 
 plot.raw.expr <- function(superEdata, plot.title){
+  superEdata %>%
+    group_by(condition) %>%
+    summarise(expr.mean = mean(expression), expr.se = sd(expression)/sqrt(n()), n = n()) -> superEsum
   return(
-    ggplot(data = superEdata, aes(x = condition, y = expression))+
-      geom_jitter(width = 0.15, size = 2.5, alpha = 0.6, color = 'goldenrod')+
-      geom_boxplot(color='black', alpha = 0, width = 0.5, outlier.stroke = 0, outlier.size = 0)+
+    ggplot(data = superEsum, aes(x = condition, y = expr.mean))+
+      geom_jitter(data = superEdata, aes(x = condition, y = expression), width = 0.15, size = 2.5, alpha = 0.6, color = 'goldenrod')+
+      geom_bar(color='black', alpha = 0, width = 0.6, stat = 'identity')+
+      geom_errorbar(color='black', width = 0.25, aes(ymin = expr.mean-expr.se, ymax = expr.mean+expr.se))+
       labs(x = NULL, y = 'Expression', title = plot.title)+
       plot.opts
   )
