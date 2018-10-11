@@ -5,6 +5,7 @@
 rm(list=ls())
 source('utilityfunctions_superE.R')
 require(tools)
+require(plotly)
 
 #########################################################################################################################
 # Define functions
@@ -121,7 +122,8 @@ read.all(filetype = 'csv',
          dir = '~/Dropbox/_Venters_Lab_Resources/3_Rotation_Students/4_Cody/superE/Bglobin_30Sep18/') %>%
   rename(`x-Int.`=X.Intercept., Scale=scale, `Activity Bounds`=activity.bounds) %>% # clean up some column names
   mutate(temp = vectorsplit(vectorsplit(file, "\\."), "X", 2)) %>% # extract replicate and WT normalization from filename
-  columnsplit(clmn = 'temp', newnames = c('Replicates','WT'), drop.orig = T, delim = "\\_") -> master
+  columnsplit(clmn = 'temp', newnames = c('Replicates','WT'), drop.orig = T, delim = "\\_") %>%
+  mutate(act = as.numeric(vectorsplit(vectorsplit(`Activity Bounds`, ',', 2), '\\)')))-> master
 
 # determine lowest BIC in each test cohort and create 'winner' column in master df
 master %>% 
@@ -134,6 +136,47 @@ master %>%
   mutate(winner = F) %>%
   bind_rows(low.bic) -> master
 
+#########################################################################################################################
+# try some plotting stuff
+p <- plot_ly(master, x = ~optim.iter, y = ~act, z = ~bic, color = ~winner) %>%
+  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'DEoptim Iterations'),
+                      yaxis = list(title = 'Activity Bounds'),
+                      zaxis = list(title = 'BIC')))
+
+master %>% 
+  group_by(act, optim.iter) %>% 
+  filter(bic==max(bic)) %>%
+  select(bic, optim.iter) %>%
+  spread(value = bic, key = optim.iter) %>%
+  ungroup() %>%
+  select(-act) -> surface.hi
+
+master %>% 
+  group_by(act, optim.iter) %>% 
+  filter(bic==min(bic)) %>%
+  select(bic, optim.iter) %>%
+  spread(value = bic, key = optim.iter) %>% 
+  ungroup() %>%
+  select(-act) -> surface.lo
+
+# 3D surface of best and worst BICs for each condition across all tests
+p <- plot_ly(x = unique(master$act), y = unique(master$optim.iter)) %>% 
+  add_surface(z = as.matrix(surface.lo), showscale=F) %>%
+  add_surface(z = as.matrix(surface.hi), showscale=F) %>%
+  layout(showlegend=F, scene = list(xaxis = list(title = 'Activity Bounds'),
+                      yaxis = list(title = 'Optim. Iterations'),
+                      zaxis = list(title = 'BIC')))
+
+# heatmap?
+row.names(surface.hi) <- unique(master$act)
+heatmap(as.matrix(surface.hi), xlab="Iterations", ylab="Bounds", Rowv = NA, Colv = NA)
+
+# heatmap?
+row.names(surface.lo) <- unique(master$act)
+heatmap(as.matrix(surface.lo), xlab="Iterations", ylab="Bounds", Rowv = NA, Colv = NA)
+
+#########################################################################################################################
 # write false positive BIC calls to .csv file
 low.bic %>%
   select(link, error, optim.iter, bic, rel.bic, `Activity Bounds`, Replicates, WT) %>%
