@@ -1,6 +1,12 @@
 ### super-enhancer-testing
 Testing models of super enhancer activity using superEnhancerModelR package from Dukler, et al. (2017)  
   
+##### `inputs/`
+Contains example data for _wap_, _alpha-globin_, and _beta-globin_. Files in "_superEformat_" can be plugged straight into `test_superE.R`. Other files need to be reshaped by functions from `utilityfunctions_superE.R` prior to testing.  
+  
+##### `outputs/`
+Houses files generated from testing of superEnhancerModelR, as concatenated and plotted by `compile_results.R`.  
+  
 ##### `utilityfunctions_superE.R`
 * Contains functions for generating B-globin data for testing the super enhancer model based on code from AP (2017), and expression data from Bender, et al (2012)  
 * Defines functions for reshaping data into format amenable to `superEnhancerModelR` package  
