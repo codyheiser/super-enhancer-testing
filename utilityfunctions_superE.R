@@ -197,6 +197,23 @@ test.params <- function(df, errs, links, enhancer.formula = ~E1+E2+E3+E4+E5+E6, 
   mods <- list() # initiate empty list for dumping models into
   plts <- list() # initiate empty list for dumping plots into
   
+  # determine error and link functions to use as baseline for relative BIC calculation in hierarchical order of complexity
+  if('gaussian' %in% errs){
+    rel.base.err <- 'gaussian'
+  }else{
+    rel.base.err <- 'lognormal'
+  }
+  
+  if('additive' %in% links){
+    rel.base.link <- 'additive'
+  }else{
+    if('exponential' %in% links){
+      rel.base.link <- 'exponential'
+    }else{
+      rel.base.link <- 'logistic'
+    }
+  }
+  
   for(link.function in links){
     for(err.function in errs){
       
@@ -218,7 +235,7 @@ test.params <- function(df, errs, links, enhancer.formula = ~E1+E2+E3+E4+E5+E6, 
       }
     }
   }
-  bic$rel.bic <- bic$bic - (bic %>% filter(link=='additive', error=='gaussian'))$bic # calculate BICs relative to additive/gaussian combo
+  bic$rel.bic <- bic$bic - (bic %>% filter(link==rel.base.link, error==rel.base.err))$bic # calculate BICs relative to additive/gaussian combo
   
   print(proc.time()-start.time)
   return(list(bic,mods,plts)) # return as list of objects
@@ -250,6 +267,3 @@ sum.fig.superE <- function(plotlist, bic.vals = NULL){
   }
   return(fig)
 }
-
-# extract link function coefficient values and generate plots
-
