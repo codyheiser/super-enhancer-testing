@@ -218,4 +218,70 @@ coeff.fig <- ggarrange(plotlist = eval(parse(text = paste0('list(`',paste(unlist
                   bottom = text_grob('Link Coefficient', size = 14))
 ggsave(plot = coeff.fig, filename = 'outputs/link_coeff_fig.pdf', device = 'pdf', height = 14, width = 16, units = 'in')
 
+#########################################################################################################################
+# reshape some novel enhancer data for testing
+slc25a37 <- read.default('inputs/Slc25a37-enhDeletion_modCH.csv')
 
+slc25a37 %>%
+  select(-grep(pattern = 'mean|sd|sem', names(slc25a37))) %>%
+  gather(key = variable, value = expression, -TimePoint) %>%
+  filter(!is.na(expression)) %>%
+  mutate_cond(str_detect(variable, 'wt'), variable = 'wt') %>%
+  mutate(condition = vectorsplit(variable, '\\.')) %>%
+  mutate(E1=1, E2=1, E3=1, P=1) %>%
+  mutate_cond(str_detect(condition,'1'), E1=0) %>%
+  mutate_cond(str_detect(condition,'2'), E2=0) %>%
+  mutate_cond(str_detect(condition,'3'), E3=0) %>%
+  mutate_cond(str_detect(condition,'promoter'), P=0) %>%
+  select(TimePoint, expression, condition, E1, E2, E3, P) -> slc25a37_superE
+
+slc25a37_superE %>%
+  filter(TimePoint == '0h') %>%
+  select(-TimePoint) %>%
+  write.csv('inputs/slc25a37_0hr.csv', row.names = F)
+slc25a37_superE %>%
+  filter(TimePoint == '4h') %>%
+  select(-TimePoint) %>%
+  write.csv('inputs/slc25a37_4hr.csv', row.names = F)
+slc25a37_superE %>%
+  filter(TimePoint == '8h') %>%
+  select(-TimePoint) %>%
+  write.csv('inputs/slc25a37_8hr.csv', row.names = F)
+slc25a37_superE %>%
+  filter(TimePoint == '12h') %>%
+  select(-TimePoint) %>%
+  write.csv('inputs/slc25a37_12hr.csv', row.names = F)
+slc25a37_superE %>%
+  filter(TimePoint == '24h') %>%
+  select(-TimePoint) %>%
+  write.csv('inputs/slc25a37_24hr.csv', row.names = F)
+slc25a37_superE %>%
+  filter(TimePoint == '48h') %>%
+  select(-TimePoint) %>%
+  write.csv('inputs/slc25a37_48hr.csv', row.names = F)
+
+slc25a37_superE$TimePoint = factor(slc25a37_superE$TimePoint, levels=c('0h','4h','8h','12h','24h','48h'))
+slc25a37_superE %>%
+  group_by(condition, TimePoint) %>%
+  summarise(expr.mean = mean(expression), expr.se = sd(expression)/sqrt(n()), n = n()) %>%
+  ggplot(aes(x = condition, y = expr.mean))+
+  geom_jitter(data = slc25a37_superE, aes(x = condition, y = expression), width = 0.15, size = 2.5, alpha = 0.6, color = 'goldenrod')+
+  geom_bar(color='black', alpha = 0, width = 0.6, stat = 'identity')+
+  geom_errorbar(color='black', width = 0.25, aes(ymin = expr.mean-expr.se, ymax = expr.mean+expr.se))+
+  labs(x = NULL, y = 'Expression', title = expression(italic('slc25a37')))+
+  facet_wrap(~TimePoint, ncol = 3, scales = 'free_y')+
+  plot.opts+
+  theme(axis.text.x = element_text(angle=50, hjust=1)) -> slc25a37.plt.timepoint
+ggsave(plot = slc25a37.plt.timepoint, filename = 'outputs/slc25a37_timepointplot_raw.pdf', device = 'pdf', width = 8, height = 6, units = 'in')
+
+slc25a37_superE %>%
+  group_by(condition) %>%
+  summarise(expr.mean = mean(expression), expr.se = sd(expression)/sqrt(n()), n = n()) -> superEsum
+ggplot(data = superEsum, aes(x = condition, y = expr.mean, color = TimePoint))+
+  geom_jitter(data = slc25a37_superE, aes(x = condition, y = expression), width = 0.15, size = 2.5, alpha = 0.6)+
+  geom_bar(color='black', alpha = 0, width = 0.6, stat = 'identity')+
+  geom_errorbar(color='black', width = 0.25, aes(ymin = expr.mean-expr.se, ymax = expr.mean+expr.se))+
+  labs(x = NULL, y = 'Expression', title = expression(italic('slc25a37')))+
+  plot.opts+
+  theme(axis.text.x = element_text(angle=50, hjust=1)) -> slc25a37.plt.all
+ggsave(plot = slc25a37.plt.all, filename = 'outputs/slc25a37_raw.pdf', device = 'pdf', width = 6, height = 4, units = 'in')
